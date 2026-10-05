@@ -1,0 +1,14 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 48 48" width="48" height="48">
+  <style>
+    .ink { stroke: #0a0a0a; fill: none; stroke-linecap: round }
+    .solid { fill: #0a0a0a }
+    @media (prefers-color-scheme: dark) {
+      .ink { stroke: #fafafa }
+      .solid { fill: #fafafa }
+    }
+  </style>
+  <path class="ink" stroke-width="3.5" d="M5 15V10a5 5 0 0 1 5-5h5M33 5h5a5 5 0 0 1 5 5v5M43 33v5a5 5 0 0 1-5 5h-5M15 43h-5a5 5 0 0 1-5-5v-5"/>
+  <path class="ink" stroke-width="3" d="M20 24h8"/>
+  <rect class="solid" x="12" y="19" width="10" height="10" rx="2.5"/>
+  <rect fill="#2563eb" x="26" y="19" width="10" height="10" rx="2.5"/>
+</svg>
