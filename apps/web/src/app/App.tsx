@@ -1,5 +1,6 @@
-import { HomePage } from '@/pages/home/HomePage';
+import { RouterProvider } from 'react-router/dom';
+import { router } from './router';
 
 export default function App() {
-  return <HomePage />;
+  return <RouterProvider router={router} />;
 }
