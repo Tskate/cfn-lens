@@ -1,3 +1,4 @@
+import { Link } from 'react-router';
 import { buttonVariants } from '@/components/primitives/button';
 import { siteConfig } from '@/config';
 
@@ -7,10 +8,10 @@ export function SiteHeader() {
   return (
     <header className="border-b bg-background">
       <div className="mx-auto flex h-15 max-w-300 items-center justify-between gap-4 px-6 whitespace-nowrap">
-        <a href="/" className="flex items-center gap-2.5 text-base font-semibold">
+        <Link to="/" className="flex items-center gap-2.5 text-base font-semibold">
           <img src="/logo.svg" alt="" className="size-6" />
           cfn-lens
-        </a>
+        </Link>
         <nav aria-label="Main" className="flex items-center gap-3 text-sm sm:gap-5">
           <a href="#samples" className={navLinkClass}>
             Samples

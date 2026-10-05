@@ -1,3 +1,4 @@
+import { Link } from 'react-router';
 import { samples } from './samples';
 import { ServiceIcon } from '@/components/ServiceIcon';
 
@@ -14,9 +15,8 @@ export function SampleGallery() {
       <ul className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
         {samples.map((sample) => (
           <li key={sample.id}>
-            {/* Becomes a link to the workspace once routing exists. */}
-            <button
-              type="button"
+            <Link
+              to={{ pathname: '/app', search: `?sample=${sample.id}` }}
               className="flex h-full w-full flex-col gap-3 rounded-xl border bg-background p-5 text-left transition-colors outline-none hover:border-neutral-300 focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50"
             >
               <span className="flex gap-1.5">
@@ -27,7 +27,7 @@ export function SampleGallery() {
               <span className="text-base/normal font-semibold">{sample.title}</span>
               <span className="text-sm/normal text-neutral-500">{sample.description}</span>
               <span className="mt-auto text-sm/normal font-medium">View diagram →</span>
-            </button>
+            </Link>
           </li>
         ))}
       </ul>

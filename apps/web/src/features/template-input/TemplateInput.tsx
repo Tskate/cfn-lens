@@ -1,8 +1,10 @@
 import { ArrowRight, FileUp, Upload } from 'lucide-react';
 import { useId, useState, type ChangeEvent, type FormEvent } from 'react';
+import { useNavigate } from 'react-router';
 import { Button } from '@/components/primitives/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/primitives/tabs';
 import { Textarea } from '@/components/primitives/textarea';
+import type { TemplateHandoff } from './templateHandoff';
 
 type InputMethod = 'paste' | 'upload';
 
@@ -16,6 +18,7 @@ const triggerClass =
 
 export function TemplateInput() {
   const textareaId = useId();
+  const navigate = useNavigate();
   const [method, setMethod] = useState<InputMethod>('paste');
   const [template, setTemplate] = useState('');
 
@@ -30,8 +33,9 @@ export function TemplateInput() {
   }
 
   function handleSubmit(event: FormEvent<HTMLFormElement>) {
-    // TODO: complete implementation
     event.preventDefault();
+    // Location state lives in browser history: it survives a refresh but never appears in the URL.
+    void navigate('/app', { state: { template } satisfies TemplateHandoff });
   }
 
   return (
