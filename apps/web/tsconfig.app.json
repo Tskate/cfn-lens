@@ -7,7 +7,9 @@
 
     /* Bundler mode */
     "moduleDetection": "force",
-    "jsx": "react-jsx"
+    "jsx": "react-jsx",
+
+    "paths": { "@/*": ["./src/*"] }
   },
   "include": ["src"]
 }

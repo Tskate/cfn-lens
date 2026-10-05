@@ -24,6 +24,11 @@ export default defineConfig([
     extends: [reactHooks.configs.flat.recommended, reactRefresh.configs.vite],
     languageOptions: { globals: globals.browser },
   },
+  {
+    // shadcn/ui components are generated and export helpers (e.g. `buttonVariants`) next to components.
+    files: ['apps/web/src/components/primitives/**/*.tsx'],
+    rules: { 'react-refresh/only-export-components': 'off' },
+  },
   // Must stay last: turns off stylistic rules that would fight Prettier.
   prettier,
 ]);
