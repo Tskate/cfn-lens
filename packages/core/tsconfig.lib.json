@@ -1,0 +1,9 @@
+{
+  "extends": "../../tsconfig.base.json",
+  "compilerOptions": {
+    "tsBuildInfoFile": "./node_modules/.tmp/tsconfig.lib.tsbuildinfo",
+    // No ambient types and no DOM lib: core must run in any JS runtime (browser, worker, Lambda).
+    "types": []
+  },
+  "include": ["src"]
+}
