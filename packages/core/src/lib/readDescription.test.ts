@@ -17,13 +17,13 @@ describe('readDescription', () => {
   it.each([
     ['1025 ASCII characters', 'a'.repeat(1025)],
     ['513 two-byte characters', 'é'.repeat(513)],
-  ])('keeps but warns about a description over 1024 bytes (%s)', (_label, description) => {
+  ])('keeps but reports a description over 1024 bytes (%s)', (_label, description) => {
     const { value, diagnostics } = runReader(readDescription, `Description: ${description}`);
 
     expect(value).toBe(description);
     expect(diagnostics).toEqual([
       expect.objectContaining({
-        severity: 'warning',
+        severity: 'error',
         code: 'description-too-long',
         range: expect.objectContaining({ start: { offset: 13, line: 1, column: 14 } }),
       }),

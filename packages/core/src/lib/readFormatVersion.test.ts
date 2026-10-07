@@ -18,7 +18,7 @@ describe('readFormatVersion', () => {
     expect(value).toBe('2024-01-01');
     expect(diagnostics).toEqual([
       expect.objectContaining({
-        severity: 'warning',
+        severity: 'error',
         code: 'unsupported-format-version',
         range: expect.objectContaining({ start: { offset: 26, line: 1, column: 27 } }),
       }),

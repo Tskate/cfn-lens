@@ -9,7 +9,7 @@ export function readFormatVersion(root: YAMLMap.Parsed, ctx: ParserContext): str
   const field = readOptionalString(root, 'AWSTemplateFormatVersion', ctx);
 
   if (field && !field.reported && field.value !== SUPPORTED_FORMAT_VERSION) {
-    ctx.warning(
+    ctx.error(
       'unsupported-format-version',
       `Unsupported AWSTemplateFormatVersion '${field.value}'; the only valid value is '${SUPPORTED_FORMAT_VERSION}'.`,
       field.node,

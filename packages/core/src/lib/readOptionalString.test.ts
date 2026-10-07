@@ -62,10 +62,10 @@ describe('readOptionalString', () => {
   it.each([
     ['a list', `Key: [a, b]`],
     ['a mapping', `Key: { a: b }`],
-  ])('returns undefined and warns for %s', (_label, source) => {
+  ])('returns undefined and reports %s', (_label, source) => {
     const { value, diagnostics } = read(source);
 
     expect(value).toBeUndefined();
-    expect(diagnostics).toEqual([expect.objectContaining({ severity: 'warning', code: 'expected-string' })]);
+    expect(diagnostics).toEqual([expect.objectContaining({ severity: 'error', code: 'expected-string' })]);
   });
 });

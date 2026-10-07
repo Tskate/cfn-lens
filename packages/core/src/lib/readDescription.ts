@@ -17,11 +17,7 @@ export function readDescription(root: YAMLMap.Parsed, ctx: ParserContext): strin
   const bytes = utf8ByteLength(field.value);
 
   if (bytes > MAX_DESCRIPTION_BYTES) {
-    ctx.warning(
-      'description-too-long',
-      `Description is ${bytes} bytes; CloudFormation allows at most ${MAX_DESCRIPTION_BYTES}.`,
-      field.node,
-    );
+    ctx.error('description-too-long', `Description is ${bytes} bytes; CloudFormation allows at most ${MAX_DESCRIPTION_BYTES}.`, field.node);
   }
 
   return field?.value;

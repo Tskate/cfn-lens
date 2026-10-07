@@ -7,6 +7,7 @@ import { parseYaml } from './parseYaml';
 import { ParserContext } from './ParserContext';
 import { readDescription } from './readDescription';
 import { readFormatVersion } from './readFormatVersion';
+import { readParameters } from './readParameters';
 import { readTransforms } from './readTransforms';
 
 type ParseResult = {
@@ -45,6 +46,7 @@ export function parseTemplate(sourceText: string): ParseResult {
     formatVersion: readFormatVersion(root, ctx),
     description: readDescription(root, ctx),
     transforms: readTransforms(root, ctx),
+    parameters: readParameters(root, ctx),
     resources: new Map(),
   });
 }

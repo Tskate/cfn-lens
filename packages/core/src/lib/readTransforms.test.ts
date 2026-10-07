@@ -44,11 +44,11 @@ describe('readTransforms', () => {
     ]);
   });
 
-  it('skips a mapping without Name and warns', () => {
+  it('skips and reports a mapping without Name', () => {
     const { value, diagnostics } = runReader(readTransforms, `Transform:\n  Parameters:\n    Location: s3://bucket/file.yaml`);
 
     expect(value).toEqual([]);
-    expect(diagnostics).toEqual([expect.objectContaining({ severity: 'warning', code: 'transform-missing-name' })]);
+    expect(diagnostics).toEqual([expect.objectContaining({ severity: 'error', code: 'transform-missing-name' })]);
   });
 
   it('warns when Name is not a string', () => {

@@ -17,8 +17,14 @@ describe('parseTemplate', () => {
   describe('sections', () => {
     // One parser for both formats: the same template as YAML and JSON gives the same result
     it.each([
-      ['YAML', `AWSTemplateFormatVersion: '2010-09-09'\nDescription: My stack\nTransform: AWS::Serverless-2016-10-31`],
-      ['JSON', `{ "AWSTemplateFormatVersion": "2010-09-09", "Description": "My stack", "Transform": "AWS::Serverless-2016-10-31" }`],
+      [
+        'YAML',
+        `AWSTemplateFormatVersion: '2010-09-09'\nDescription: My stack\nTransform: AWS::Serverless-2016-10-31\nParameters:\n  Env:\n    Type: String`,
+      ],
+      [
+        'JSON',
+        `{ "AWSTemplateFormatVersion": "2010-09-09", "Description": "My stack", "Transform": "AWS::Serverless-2016-10-31", "Parameters": { "Env": { "Type": "String" } } }`,
+      ],
     ])('reads every section from %s', (_label, source) => {
       const result = parseTemplate(source);
 
@@ -27,6 +33,7 @@ describe('parseTemplate', () => {
         description: 'My stack',
         transforms: ['AWS::Serverless-2016-10-31'],
       });
+      expect(result.template?.parameters.get('Env')?.type).toBe('String');
       expect(result.diagnostics).toEqual([]);
     });
 
@@ -34,6 +41,7 @@ describe('parseTemplate', () => {
       const result = parseTemplate(`Resources: {}`);
 
       expect(result.template).toMatchObject({ formatVersion: undefined, description: undefined, transforms: [] });
+      expect(result.template?.parameters.size).toBe(0);
       expect(result.diagnostics).toEqual([]);
     });
 
@@ -56,6 +64,12 @@ describe('parseTemplate', () => {
           range: expect.objectContaining({ start: expect.objectContaining({ line: 1 }) }),
         }),
       );
+    });
+
+    it('reports duplicate logical IDs as a YAML error', () => {
+      const result = parseTemplate(`Parameters:\n  Env: { Type: String }\n  Env: { Type: Number }`);
+
+      expect(result.diagnostics).toContainEqual(expect.objectContaining({ severity: 'error', code: 'yaml-syntax' }));
     });
 
     // Nothing to parse yet: not an error, the UI shows a "paste a template" hint

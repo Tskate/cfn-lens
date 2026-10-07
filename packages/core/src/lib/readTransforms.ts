@@ -26,7 +26,7 @@ function readTransformName(node: ParsedNode, ctx: ParserContext): string | undef
   const name = node.get('Name', true) as ParsedNode | undefined;
 
   if (!name) {
-    ctx.warning('transform-missing-name', 'A Transform mapping needs a Name.', node);
+    ctx.error('transform-missing-name', 'A Transform mapping needs a Name.', node);
     return undefined;
   }
 
