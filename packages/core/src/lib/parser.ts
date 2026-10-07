@@ -1,8 +1,9 @@
-import { isMap, LineCounter, parseDocument } from 'yaml';
+import { isMap } from 'yaml';
 
 import type { Template } from '../types/template';
 import type { Diagnostic, Format } from '../types';
 import { detectFormat } from '../utils/detectFormat';
+import { parseYaml } from './parseYaml';
 import { ParserContext } from './ParserContext';
 import { readDescription } from './readDescription';
 import { readFormatVersion } from './readFormatVersion';
@@ -14,10 +15,7 @@ type ParseResult = {
 };
 
 export function parseTemplate(sourceText: string): ParseResult {
-  const lineCounter = new LineCounter();
-  // YAML 1.2 is a superset of JSON, so one parser handles both formats.
-  // 1.2 (not 1.1) also keeps an unquoted 2010-09-09 a string instead of a date.
-  const doc = parseDocument(sourceText, { lineCounter, version: '1.2', prettyErrors: false });
+  const { doc, lineCounter } = parseYaml(sourceText);
 
   const ctx = new ParserContext(lineCounter);
   const format = detectFormat(sourceText);

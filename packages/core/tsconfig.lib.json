@@ -6,6 +6,6 @@
     "types": []
   },
   "include": ["src"],
-  // Tests live next to the code but belong to the test program (tsconfig.test.json).
-  "exclude": ["src/**/*.test.ts"]
+  // Tests and test helpers live next to the code but belong to the test program (tsconfig.test.json).
+  "exclude": ["src/**/*.test.ts", "src/fixtures"]
 }
