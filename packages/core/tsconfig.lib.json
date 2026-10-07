@@ -5,5 +5,7 @@
     // No ambient types and no DOM lib: core must run in any JS runtime (browser, worker, Lambda).
     "types": []
   },
-  "include": ["src"]
+  "include": ["src"],
+  // Tests live next to the code but belong to the test program (tsconfig.test.json).
+  "exclude": ["src/**/*.test.ts"]
 }

@@ -5,5 +5,5 @@
     // Separate program: Vitest/Vite types pull in Node globals, which must not leak into src.
     "types": ["node"]
   },
-  "include": ["src", "test", "vitest.config.ts"]
+  "include": ["src", "fixtures", "vitest.config.ts"]
 }

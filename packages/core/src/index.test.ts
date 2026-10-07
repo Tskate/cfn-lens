@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import * as core from '../src/index.ts';
+import * as core from './index.ts';
 
 // Smoke test for the toolchain; replace once the parser lands.
 describe('@cfn-lens/core', () => {
