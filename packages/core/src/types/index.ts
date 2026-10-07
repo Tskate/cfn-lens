@@ -10,7 +10,8 @@ export type DiagnosticCode =
   | 'expected-string'
   | 'string-not-quoted'
   | 'unsupported-format-version'
-  | 'description-too-long';
+  | 'description-too-long'
+  | 'transform-missing-name';
 export type Diagnostic = {
   severity: DiagnosticSeverity;
   code: DiagnosticCode;

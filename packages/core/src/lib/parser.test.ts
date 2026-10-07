@@ -17,19 +17,23 @@ describe('parseTemplate', () => {
   describe('sections', () => {
     // One parser for both formats: the same template as YAML and JSON gives the same result
     it.each([
-      ['YAML', `AWSTemplateFormatVersion: '2010-09-09'\nDescription: My stack`],
-      ['JSON', `{ "AWSTemplateFormatVersion": "2010-09-09", "Description": "My stack" }`],
+      ['YAML', `AWSTemplateFormatVersion: '2010-09-09'\nDescription: My stack\nTransform: AWS::Serverless-2016-10-31`],
+      ['JSON', `{ "AWSTemplateFormatVersion": "2010-09-09", "Description": "My stack", "Transform": "AWS::Serverless-2016-10-31" }`],
     ])('reads every section from %s', (_label, source) => {
       const result = parseTemplate(source);
 
-      expect(result.template).toMatchObject({ formatVersion: '2010-09-09', description: 'My stack' });
+      expect(result.template).toMatchObject({
+        formatVersion: '2010-09-09',
+        description: 'My stack',
+        transforms: ['AWS::Serverless-2016-10-31'],
+      });
       expect(result.diagnostics).toEqual([]);
     });
 
     it('returns a template without optional sections when they are missing', () => {
       const result = parseTemplate(`Resources: {}`);
 
-      expect(result.template).toMatchObject({ formatVersion: undefined, description: undefined });
+      expect(result.template).toMatchObject({ formatVersion: undefined, description: undefined, transforms: [] });
       expect(result.diagnostics).toEqual([]);
     });
 

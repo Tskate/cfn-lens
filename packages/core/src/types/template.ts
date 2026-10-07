@@ -13,10 +13,11 @@ export type Template = {
   // '2010-09-09' is only valid for now https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/format-version-structure.html
   formatVersion?: string;
   description?: string;
-  transforms?: string[];
+  // Macro names in execution order; [] when the section is missing.
+  transforms: string[];
+  resources: ReadonlyMap<string, Resource>;
   parameters?: ReadonlyMap<string, Parameter>;
   mappings?: ReadonlyMap<string, Mapping>;
   conditions?: ReadonlyMap<string, Condition>;
-  resources: ReadonlyMap<string, Resource>;
   outputs?: ReadonlyMap<string, Output>;
 };
