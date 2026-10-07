@@ -160,6 +160,6 @@ describe('validateParameters', () => {
     const make = (count: number) => new Map(Array.from({ length: count }, (_, i) => [`P${i}`, parameter({ name: `P${i}` })]));
 
     expect(validateParameters(make(200))).toEqual([]);
-    expect(validateParameters(make(201))).toEqual([expect.objectContaining({ severity: 'error', code: 'too-many-parameters' })]);
+    expect(validateParameters(make(201))).toEqual([expect.objectContaining({ severity: 'error', code: 'too-many-entries' })]);
   });
 });

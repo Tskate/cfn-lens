@@ -19,11 +19,11 @@ describe('parseTemplate', () => {
     it.each([
       [
         'YAML',
-        `AWSTemplateFormatVersion: '2010-09-09'\nDescription: My stack\nTransform: AWS::Serverless-2016-10-31\nParameters:\n  Env:\n    Type: String`,
+        `AWSTemplateFormatVersion: '2010-09-09'\nDescription: My stack\nTransform: AWS::Serverless-2016-10-31\nParameters:\n  Env:\n    Type: String\nMappings:\n  RegionMap:\n    us-east-1:\n      Ami: ami-111`,
       ],
       [
         'JSON',
-        `{ "AWSTemplateFormatVersion": "2010-09-09", "Description": "My stack", "Transform": "AWS::Serverless-2016-10-31", "Parameters": { "Env": { "Type": "String" } } }`,
+        `{ "AWSTemplateFormatVersion": "2010-09-09", "Description": "My stack", "Transform": "AWS::Serverless-2016-10-31", "Parameters": { "Env": { "Type": "String" } }, "Mappings": { "RegionMap": { "us-east-1": { "Ami": "ami-111" } } } }`,
       ],
     ])('reads every section from %s', (_label, source) => {
       const result = parseTemplate(source);
@@ -34,6 +34,7 @@ describe('parseTemplate', () => {
         transforms: ['AWS::Serverless-2016-10-31'],
       });
       expect(result.template?.parameters.get('Env')?.type).toBe('String');
+      expect(result.template?.mappings.get('RegionMap')?.entries.get('us-east-1')?.get('Ami')).toBe('ami-111');
       expect(result.diagnostics).toEqual([]);
     });
 
@@ -42,6 +43,7 @@ describe('parseTemplate', () => {
 
       expect(result.template).toMatchObject({ formatVersion: undefined, description: undefined, transforms: [] });
       expect(result.template?.parameters.size).toBe(0);
+      expect(result.template?.mappings.size).toBe(0);
       expect(result.diagnostics).toEqual([]);
     });
 

@@ -14,6 +14,8 @@ export type SectionEntry = {
 
 // https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/resources-section-structure.html#resources-section-logical-id
 const LOGICAL_ID = /^[A-Za-z0-9]+$/;
+// https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/cloudformation-limits.html
+export const MAX_NAME_LENGTH = 255;
 
 // Reads a section that maps logical IDs to mappings (Parameters, Mappings, Resources, Outputs).
 // Missing or empty → empty map. Entries that are not mappings are reported and skipped.
@@ -44,6 +46,10 @@ export function readSection<T>(
 
     if (!LOGICAL_ID.test(name)) {
       ctx.error('invalid-logical-id', `Logical ID '${name}' must contain only letters and digits.`, nameNode);
+    }
+
+    if (name.length > MAX_NAME_LENGTH) {
+      ctx.error('name-too-long', `Logical IDs can be at most ${MAX_NAME_LENGTH} characters.`, nameNode);
     }
 
     if (!isMap(value)) {

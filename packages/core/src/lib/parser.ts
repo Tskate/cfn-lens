@@ -3,13 +3,18 @@ import { isMap } from 'yaml';
 import type { Template } from '../types/template';
 import type { Diagnostic, Format } from '../types';
 import { detectFormat } from '../utils/detectFormat';
+import { checkEntryLimit } from './checkEntryLimit';
 import { parseYaml } from './parseYaml';
 import { ParserContext } from './ParserContext';
 import { readDescription } from './readDescription';
 import { readFormatVersion } from './readFormatVersion';
+import { readMappings } from './readMappings';
 import { readParameters } from './readParameters';
 import { readTransforms } from './readTransforms';
 import { validateParameters } from './validateParameters';
+
+// https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/cloudformation-limits.html
+const MAX_MAPPINGS = 200;
 
 type ParseResult = {
   template: Template | null;
@@ -48,11 +53,13 @@ export function parseTemplate(sourceText: string): ParseResult {
     description: readDescription(root, ctx),
     transforms: readTransforms(root, ctx),
     parameters: readParameters(root, ctx),
+    mappings: readMappings(root, ctx),
     resources: new Map(),
   };
 
   // Validation runs on the parsed model, once every section has been read.
   ctx.add(validateParameters(template.parameters));
+  ctx.add(checkEntryLimit('Mappings', template.mappings, MAX_MAPPINGS));
 
   return result(template);
 }

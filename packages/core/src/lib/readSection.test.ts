@@ -73,6 +73,20 @@ describe('readSection', () => {
     ]);
   });
 
+  it('reports a logical ID longer than 255 characters but keeps the entry', () => {
+    const name = 'A'.repeat(256);
+    const { value, diagnostics } = read(`Section:\n  ${'A'.repeat(255)}: { a: 1 }\n  ${name}: { a: 1 }`);
+
+    expect(value.size).toBe(2);
+    expect(diagnostics).toEqual([
+      expect.objectContaining({
+        severity: 'error',
+        code: 'name-too-long',
+        range: expect.objectContaining({ start: expect.objectContaining({ line: 3 }) }),
+      }),
+    ]);
+  });
+
   it.each([
     ['empty', `Section:\n  Env:`],
     ['a string', `Section:\n  Env: hello`],

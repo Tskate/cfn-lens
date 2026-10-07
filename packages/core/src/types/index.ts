@@ -24,7 +24,9 @@ export type DiagnosticCode =
   | 'invalid-constraint-range'
   | 'invalid-allowed-pattern'
   | 'default-violates-constraint'
-  | 'too-many-parameters';
+  | 'too-many-entries'
+  | 'name-too-long'
+  | 'intrinsic-not-allowed';
 export type Diagnostic = {
   severity: DiagnosticSeverity;
   code: DiagnosticCode;

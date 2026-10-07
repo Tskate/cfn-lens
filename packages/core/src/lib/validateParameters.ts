@@ -1,5 +1,6 @@
 import type { Diagnostic, DiagnosticCode, DiagnosticSeverity } from '../types';
 import type { Parameter, ParameterProperty } from '../types/template';
+import { checkEntryLimit } from './checkEntryLimit';
 import { parseParameterType } from './parameterTypes';
 
 // https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/parameters-section-structure.html
@@ -7,17 +8,7 @@ const MAX_PARAMETERS = 200;
 const MAX_DESCRIPTION_CHARACTERS = 4000;
 
 export function validateParameters(parameters: ReadonlyMap<string, Parameter>): Diagnostic[] {
-  const diagnostics = [...parameters.values()].flatMap(validateParameter);
-
-  if (parameters.size > MAX_PARAMETERS) {
-    diagnostics.push({
-      severity: 'error',
-      code: 'too-many-parameters',
-      message: `The template has ${parameters.size} parameters; CloudFormation allows at most ${MAX_PARAMETERS}.`,
-    });
-  }
-
-  return diagnostics;
+  return [...[...parameters.values()].flatMap(validateParameter), ...checkEntryLimit('Parameters', parameters, MAX_PARAMETERS)];
 }
 
 // Pure: checks relationships between already-parsed fields and returns the problems found.
