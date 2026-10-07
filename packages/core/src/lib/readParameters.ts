@@ -1,13 +1,14 @@
 import { isScalar, type ParsedNode, type YAMLMap } from 'yaml';
 
-import type { Parameter } from '../types/template';
+import type { SourceRange } from '../types';
+import type { Parameter, ParameterProperty } from '../types/template';
 import type { ParserContext } from './ParserContext';
 import { readBoolean, readNumber, readStringList } from './readScalars';
 import { readSection, type SectionEntry } from './readSection';
 import { readString } from './readString';
 
 // https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/parameters-section-structure.html
-const PROPERTIES = new Set([
+const PROPERTIES: ReadonlySet<string> = new Set<ParameterProperty>([
   'Type',
   'Default',
   'AllowedValues',
@@ -26,9 +27,17 @@ export function readParameters(root: YAMLMap.Parsed, ctx: ParserContext): Readon
 }
 
 function readParameter({ name, nameNode, node, nameRange, range }: SectionEntry, ctx: ParserContext): Parameter | undefined {
-  for (const { key } of node.items) {
-    if (isScalar(key) && !PROPERTIES.has(String(key.value))) {
-      ctx.error('unknown-property', `Unknown parameter property '${key.value}' in ${name}.`, key);
+  const propertyRanges: Partial<Record<ParameterProperty, SourceRange>> = {};
+
+  for (const { key, value } of node.items) {
+    const property = isScalar(key) ? String(key.value) : undefined;
+    if (property === undefined) {
+      continue;
+    }
+    if (PROPERTIES.has(property)) {
+      propertyRanges[property as ParameterProperty] = ctx.rangeOf(value ?? key);
+    } else {
+      ctx.error('unknown-property', `Unknown parameter property '${property}' in ${name}.`, key);
     }
   }
 
@@ -64,5 +73,6 @@ function readParameter({ name, nameNode, node, nameRange, range }: SectionEntry,
     noEcho: read('NoEcho', readBoolean) ?? false,
     nameRange,
     range,
+    propertyRanges,
   };
 }

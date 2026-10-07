@@ -51,6 +51,7 @@ describe('readParameters', () => {
       noEcho: false,
       nameRange: expect.objectContaining({ start: expect.objectContaining({ line: 2, column: 3 }) }),
       range: expect.objectContaining({ end: expect.objectContaining({ line: 3, column: 17 }) }),
+      propertyRanges: { Type: expect.objectContaining({ start: expect.objectContaining({ line: 3, column: 11 }) }) },
     });
   });
 

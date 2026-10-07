@@ -18,7 +18,13 @@ export type DiagnosticCode =
   | 'string-not-quoted'
   | 'unsupported-format-version'
   | 'description-too-long'
-  | 'transform-missing-name';
+  | 'transform-missing-name'
+  | 'unsupported-parameter-type'
+  | 'constraint-not-applicable'
+  | 'invalid-constraint-range'
+  | 'invalid-allowed-pattern'
+  | 'default-violates-constraint'
+  | 'too-many-parameters';
 export type Diagnostic = {
   severity: DiagnosticSeverity;
   code: DiagnosticCode;

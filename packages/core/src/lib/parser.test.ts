@@ -45,6 +45,13 @@ describe('parseTemplate', () => {
       expect(result.diagnostics).toEqual([]);
     });
 
+    it('validates parameters after reading them', () => {
+      const result = parseTemplate(`Parameters:\n  Env:\n    Type: String\n    Default: test\n    AllowedValues: [dev, prod]`);
+
+      expect(result.template?.parameters.has('Env')).toBe(true);
+      expect(result.diagnostics.map((d) => d.code)).toEqual(['default-violates-constraint']);
+    });
+
     it('collects diagnostics from every reader', () => {
       const result = parseTemplate(`AWSTemplateFormatVersion: '2024-01-01'\nDescription: [a]`);
 

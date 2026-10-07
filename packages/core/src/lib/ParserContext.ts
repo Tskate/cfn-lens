@@ -24,6 +24,10 @@ export class ParserContext {
     this.#report('warning', code, message, at);
   }
 
+  add(diagnostics: readonly Diagnostic[]): void {
+    this.diagnostics.push(...diagnostics);
+  }
+
   rangeOf(at: Location): SourceRange {
     const [start, end] = 'range' in at ? at.range : at;
     return { start: this.#position(start), end: this.#position(end) };

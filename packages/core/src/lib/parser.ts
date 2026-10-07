@@ -9,6 +9,7 @@ import { readDescription } from './readDescription';
 import { readFormatVersion } from './readFormatVersion';
 import { readParameters } from './readParameters';
 import { readTransforms } from './readTransforms';
+import { validateParameters } from './validateParameters';
 
 type ParseResult = {
   template: Template | null;
@@ -42,11 +43,16 @@ export function parseTemplate(sourceText: string): ParseResult {
     return result(null);
   }
 
-  return result({
+  const template: Template = {
     formatVersion: readFormatVersion(root, ctx),
     description: readDescription(root, ctx),
     transforms: readTransforms(root, ctx),
     parameters: readParameters(root, ctx),
     resources: new Map(),
-  });
+  };
+
+  // Validation runs on the parsed model, once every section has been read.
+  ctx.add(validateParameters(template.parameters));
+
+  return result(template);
 }
