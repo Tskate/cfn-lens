@@ -37,7 +37,10 @@ export type DiagnosticCode =
   | 'circular-condition'
   | 'constant-condition'
   | 'duplicate-export-name'
-  | 'invalid-resource-type';
+  | 'invalid-resource-type'
+  | 'invalid-policy'
+  | 'unknown-resource'
+  | 'circular-dependency';
 
 export type Diagnostic = {
   severity: DiagnosticSeverity;

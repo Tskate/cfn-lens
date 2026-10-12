@@ -121,7 +121,7 @@ export type Resource = {
   // AWS::ServiceName::ResourceType
   type: string;
   properties?: TemplateValue;
-  dependsOn?: readonly string[];
+  dependsOn: readonly string[];
   creationPolicy?: TemplateValue;
   updatePolicy?: TemplateValue;
   updateReplacePolicy?: string;

@@ -15,11 +15,13 @@ import { readTransforms } from './readTransforms';
 import { validateConditions } from './validateConditions';
 import { validateOutputs } from './validateOutputs';
 import { validateParameters } from './validateParameters';
+import { validateResources } from './validateResources';
 import { readResources } from './readResources';
 
 // https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/cloudformation-limits.html
 const MAX_MAPPINGS = 200;
 const MAX_OUTPUTS = 200;
+const MAX_RESOURCES = 500;
 
 type ParseResult = {
   template: Template | null;
@@ -68,6 +70,8 @@ export function parseTemplate(sourceText: string): ParseResult {
   ctx.add(validateParameters(template.parameters));
   ctx.add(checkEntryLimit('Mappings', template.mappings, MAX_MAPPINGS));
   ctx.add(validateConditions(template.conditions, template));
+  ctx.add(checkEntryLimit('Resources', template.resources, MAX_RESOURCES));
+  ctx.add(validateResources(template.resources, template));
   ctx.add(checkEntryLimit('Outputs', template.outputs, MAX_OUTPUTS));
   ctx.add(validateOutputs(template.outputs, template));
 

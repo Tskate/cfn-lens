@@ -1,4 +1,5 @@
 import type { Condition, ConditionOperand, Diagnostic, Mapping, Parameter, SourceRange } from '../types';
+import { findCycles, type Edge } from '../utils/findCycles';
 
 // https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/pseudo-parameter-reference.html
 const PSEUDO_PARAMETERS = new Set([
@@ -13,14 +14,13 @@ const PSEUDO_PARAMETERS = new Set([
 ]);
 
 type Sections = { parameters: ReadonlyMap<string, Parameter>; mappings: ReadonlyMap<string, Mapping> };
-type ConditionReference = { name: string; range: SourceRange };
 
 // Pure: checks what conditions reference (parameters, mappings, other conditions) and reports cycles.
 export function validateConditions(conditions: ReadonlyMap<string, Condition>, { parameters, mappings }: Sections): Diagnostic[] {
   const diagnostics: Diagnostic[] = [];
-  const graph = new Map<string, ConditionReference[]>();
+  const graph = new Map<string, Edge[]>();
 
-  const visit = (operand: ConditionOperand, references: ConditionReference[]): void => {
+  const visit = (operand: ConditionOperand, references: Edge[]): void => {
     switch (operand.kind) {
       case 'and':
       case 'or':
@@ -44,7 +44,7 @@ export function validateConditions(conditions: ReadonlyMap<string, Condition>, {
         break;
       case 'condition':
         if (conditions.has(operand.name)) {
-          references.push({ name: operand.name, range: operand.range });
+          references.push({ target: operand.name, range: operand.range });
         } else {
           diagnostics.push({
             severity: 'error',
@@ -76,14 +76,21 @@ export function validateConditions(conditions: ReadonlyMap<string, Condition>, {
   };
 
   for (const condition of conditions.values()) {
-    const references: ConditionReference[] = [];
+    const references: Edge[] = [];
     if (condition.expression) {
       visit(condition.expression, references);
     }
     graph.set(condition.name, references);
   }
 
-  return [...diagnostics, ...findCycles(graph)];
+  const cycles = findCycles(graph).map(({ path, edge }): Diagnostic => ({
+    severity: 'error',
+    code: 'circular-condition',
+    message: `Circular condition reference: ${path.join(' → ')}.`,
+    range: edge.range,
+  }));
+
+  return [...diagnostics, ...cycles];
 }
 
 // Only literal arguments can be checked; a Ref key is resolved at deploy time.
@@ -117,42 +124,4 @@ function checkFindInMap(operand: Extract<ConditionOperand, { kind: 'findInMap' }
     return unknownKey(secondLevelKey.value, secondLevelKey.range);
   }
   return [];
-}
-
-// Depth-first search: reaching a condition that is still on the current path means a cycle.
-function findCycles(graph: ReadonlyMap<string, ConditionReference[]>): Diagnostic[] {
-  const diagnostics: Diagnostic[] = [];
-  const state = new Map<string, 'visiting' | 'done'>();
-  const path: string[] = [];
-
-  const visit = (name: string): void => {
-    state.set(name, 'visiting');
-    path.push(name);
-
-    for (const reference of graph.get(name) ?? []) {
-      const referenceState = state.get(reference.name);
-      if (referenceState === 'visiting') {
-        const cycle = [...path.slice(path.indexOf(reference.name)), reference.name];
-        diagnostics.push({
-          severity: 'error',
-          code: 'circular-condition',
-          message: `Circular condition reference: ${cycle.join(' → ')}.`,
-          range: reference.range,
-        });
-      } else if (referenceState === undefined) {
-        visit(reference.name);
-      }
-    }
-
-    path.pop();
-    state.set(name, 'done');
-  };
-
-  for (const name of graph.keys()) {
-    if (!state.has(name)) {
-      visit(name);
-    }
-  }
-
-  return diagnostics;
 }

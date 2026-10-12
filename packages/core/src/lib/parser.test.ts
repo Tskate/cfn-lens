@@ -78,6 +78,18 @@ describe('parseTemplate', () => {
       expect(result.diagnostics.map((d) => d.code)).toEqual(['unknown-condition']);
     });
 
+    it('validates resources against conditions after reading them', () => {
+      const result = parseTemplate(`Resources:\n  Topic:\n    Type: AWS::SNS::Topic\n    Condition: IsProd\n    DependsOn: Queue`);
+
+      expect(result.diagnostics.map((d) => d.code)).toEqual(['unknown-condition', 'unknown-resource']);
+    });
+
+    it('limits Resources to 500 entries', () => {
+      const resources = Array.from({ length: 501 }, (_, i) => `  R${i}: { Type: AWS::SNS::Topic }`).join('\n');
+
+      expect(parseTemplate(`Resources:\n${resources}`).diagnostics.map((d) => d.code)).toEqual(['too-many-entries']);
+    });
+
     it('limits Outputs to 200 entries', () => {
       const outputs = Array.from({ length: 201 }, (_, i) => `  O${i}: { Value: x }`).join('\n');
 
