@@ -1,0 +1,9 @@
+{
+  "extends": "../../tsconfig.base.json",
+  "compilerOptions": {
+    "tsBuildInfoFile": "./node_modules/.tmp/tsconfig.test.tsbuildinfo",
+    // Separate program: Vitest/Vite types pull in Node globals, which must not leak into src.
+    "types": ["node"]
+  },
+  "include": ["src", "fixtures", "vitest.config.ts"]
+}
