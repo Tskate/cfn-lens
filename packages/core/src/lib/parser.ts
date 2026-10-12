@@ -23,7 +23,7 @@ const MAX_MAPPINGS = 200;
 const MAX_OUTPUTS = 200;
 const MAX_RESOURCES = 500;
 
-type ParseResult = {
+export type ParseResult = {
   template: Template | null;
   diagnostics: Diagnostic[];
   format: Format;
