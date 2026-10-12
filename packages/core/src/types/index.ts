@@ -35,7 +35,8 @@ export type DiagnosticCode =
   | 'unknown-mapping'
   | 'unknown-mapping-key'
   | 'circular-condition'
-  | 'constant-condition';
+  | 'constant-condition'
+  | 'duplicate-export-name';
 export type Diagnostic = {
   severity: DiagnosticSeverity;
   code: DiagnosticCode;
@@ -46,3 +47,5 @@ export type Diagnostic = {
 export * from './parameters';
 export * from './conditions';
 export * from './template';
+export * from './values';
+export * from './outputs';

@@ -19,11 +19,11 @@ describe('parseTemplate', () => {
     it.each([
       [
         'YAML',
-        `AWSTemplateFormatVersion: '2010-09-09'\nDescription: My stack\nTransform: AWS::Serverless-2016-10-31\nParameters:\n  Env:\n    Type: String\nMappings:\n  RegionMap:\n    us-east-1:\n      Ami: ami-111\nConditions:\n  IsDev: !Equals [!Ref Env, dev]`,
+        `AWSTemplateFormatVersion: '2010-09-09'\nDescription: My stack\nTransform: AWS::Serverless-2016-10-31\nParameters:\n  Env:\n    Type: String\nMappings:\n  RegionMap:\n    us-east-1:\n      Ami: ami-111\nConditions:\n  IsDev: !Equals [!Ref Env, dev]\nOutputs:\n  EnvName:\n    Value: !Ref Env`,
       ],
       [
         'JSON',
-        `{ "AWSTemplateFormatVersion": "2010-09-09", "Description": "My stack", "Transform": "AWS::Serverless-2016-10-31", "Parameters": { "Env": { "Type": "String" } }, "Mappings": { "RegionMap": { "us-east-1": { "Ami": "ami-111" } } }, "Conditions": { "IsDev": { "Fn::Equals": [{ "Ref": "Env" }, "dev"] } } }`,
+        `{ "AWSTemplateFormatVersion": "2010-09-09", "Description": "My stack", "Transform": "AWS::Serverless-2016-10-31", "Parameters": { "Env": { "Type": "String" } }, "Mappings": { "RegionMap": { "us-east-1": { "Ami": "ami-111" } } }, "Conditions": { "IsDev": { "Fn::Equals": [{ "Ref": "Env" }, "dev"] } }, "Outputs": { "EnvName": { "Value": { "Ref": "Env" } } } }`,
       ],
     ])('reads every section from %s', (_label, source) => {
       const result = parseTemplate(source);
@@ -36,6 +36,7 @@ describe('parseTemplate', () => {
       expect(result.template?.parameters.get('Env')?.type).toBe('String');
       expect(result.template?.mappings.get('RegionMap')?.entries.get('us-east-1')?.get('Ami')).toBe('ami-111');
       expect(result.template?.conditions.get('IsDev')?.expression).toMatchObject({ kind: 'equals', left: { kind: 'ref', target: 'Env' } });
+      expect(result.template?.outputs.get('EnvName')?.value).toMatchObject({ kind: 'intrinsic', fn: 'Ref' });
       expect(result.diagnostics).toEqual([]);
     });
 
@@ -46,6 +47,7 @@ describe('parseTemplate', () => {
       expect(result.template?.parameters.size).toBe(0);
       expect(result.template?.mappings.size).toBe(0);
       expect(result.template?.conditions.size).toBe(0);
+      expect(result.template?.outputs.size).toBe(0);
       expect(result.diagnostics).toEqual([]);
     });
 
@@ -60,6 +62,18 @@ describe('parseTemplate', () => {
       const result = parseTemplate(`Parameters:\n  Env: { Type: String }\nConditions:\n  IsDev: !Equals [!Ref Stage, dev]`);
 
       expect(result.diagnostics.map((d) => d.code)).toEqual(['invalid-ref']);
+    });
+
+    it('validates outputs against conditions after reading them', () => {
+      const result = parseTemplate(`Outputs:\n  Id:\n    Value: x\n    Condition: IsProd`);
+
+      expect(result.diagnostics.map((d) => d.code)).toEqual(['unknown-condition']);
+    });
+
+    it('limits Outputs to 200 entries', () => {
+      const outputs = Array.from({ length: 201 }, (_, i) => `  O${i}: { Value: x }`).join('\n');
+
+      expect(parseTemplate(`Outputs:\n${outputs}`).diagnostics.map((d) => d.code)).toEqual(['too-many-entries']);
     });
 
     it('collects diagnostics from every reader', () => {

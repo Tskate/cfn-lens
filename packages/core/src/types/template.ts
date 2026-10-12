@@ -1,5 +1,6 @@
 import type { SourceRange } from '.';
 import type { Condition } from './conditions';
+import type { Output } from './outputs';
 import type { Parameter } from './parameters';
 
 // https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/mappings-section-structure.html
@@ -18,7 +19,6 @@ type Resource = {
   type: string;
   properties: Record<string, unknown>;
 };
-type Output = {};
 
 export type Template = {
   // '2010-09-09' is only valid for now https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/format-version-structure.html
@@ -30,5 +30,5 @@ export type Template = {
   parameters: ReadonlyMap<string, Parameter>;
   mappings: ReadonlyMap<string, Mapping>;
   conditions: ReadonlyMap<string, Condition>;
-  outputs?: ReadonlyMap<string, Output>;
+  outputs: ReadonlyMap<string, Output>;
 };
