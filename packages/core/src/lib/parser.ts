@@ -15,6 +15,7 @@ import { readTransforms } from './readTransforms';
 import { validateConditions } from './validateConditions';
 import { validateOutputs } from './validateOutputs';
 import { validateParameters } from './validateParameters';
+import { readResources } from './readResources';
 
 // https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/cloudformation-limits.html
 const MAX_MAPPINGS = 200;
@@ -59,7 +60,7 @@ export function parseTemplate(sourceText: string): ParseResult {
     parameters: readParameters(root, ctx),
     mappings: readMappings(root, ctx),
     conditions: readConditions(root, ctx),
-    resources: new Map(),
+    resources: readResources(root, ctx),
     outputs: readOutputs(root, ctx),
   };
 

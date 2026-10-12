@@ -104,10 +104,31 @@ export type Output = {
 // ── Resources ───────────────────────────────────────────────────────────────
 // https://docs.aws.amazon.com/AWSCloudFormation/latest/TemplateReference/aws-template-resource-type-ref.html
 
+export type ResourceProperty =
+  | 'Type'
+  | 'Properties'
+  | 'Condition'
+  | 'DeletionPolicy'
+  | 'UpdateReplacePolicy'
+  | 'CreationPolicy'
+  | 'UpdatePolicy'
+  | 'Metadata'
+  | 'DependsOn';
+
 // Placeholder until the Resources section is parsed.
 export type Resource = {
-  logicalId: string;
+  name: string;
   // AWS::ServiceName::ResourceType
   type: string;
-  properties: Record<string, unknown>;
+  properties?: TemplateValue;
+  dependsOn?: readonly string[];
+  creationPolicy?: TemplateValue;
+  updatePolicy?: TemplateValue;
+  updateReplacePolicy?: string;
+  deletionPolicy?: string;
+  condition?: string;
+  metadata?: TemplateValue;
+  nameRange: SourceRange;
+  range: SourceRange;
+  propertyRanges: Partial<Record<ResourceProperty, SourceRange>>;
 };

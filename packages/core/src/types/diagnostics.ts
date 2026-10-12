@@ -36,7 +36,8 @@ export type DiagnosticCode =
   | 'unknown-mapping-key'
   | 'circular-condition'
   | 'constant-condition'
-  | 'duplicate-export-name';
+  | 'duplicate-export-name'
+  | 'invalid-resource-type';
 
 export type Diagnostic = {
   severity: DiagnosticSeverity;

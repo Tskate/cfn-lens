@@ -48,6 +48,14 @@ describe('parseTemplate', () => {
       expect(result.template?.mappings.size).toBe(0);
       expect(result.template?.conditions.size).toBe(0);
       expect(result.template?.outputs.size).toBe(0);
+      expect(result.template?.resources.size).toBe(0);
+      expect(result.diagnostics).toEqual([]);
+    });
+
+    it('reads resources', () => {
+      const result = parseTemplate(`Resources:\n  Bucket:\n    Type: AWS::S3::Bucket`);
+
+      expect(result.template?.resources.get('Bucket')?.type).toBe('AWS::S3::Bucket');
       expect(result.diagnostics).toEqual([]);
     });
 
