@@ -1,6 +1,6 @@
 import type { LineCounter, ParsedNode } from 'yaml';
 
-import type { Diagnostic, DiagnosticCode, DiagnosticSeverity, Position, SourceRange } from '../types';
+import type { Diagnostic, DiagnosticCode, DiagnosticSeverity, Position, SourceRange } from '../../types';
 
 type Location = ParsedNode | readonly [start: number, end: number];
 

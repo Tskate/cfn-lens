@@ -1,10 +1,10 @@
 import { isScalar, type ParsedNode, type YAMLMap } from 'yaml';
 
 import type { Parameter, ParameterProperty, SourceRange } from '../types';
-import type { ParserContext } from './ParserContext';
-import { readBoolean, readNumber, readStringList } from './readScalars';
-import { mappingEntry, readSection, type SectionEntry } from './readSection';
-import { readString } from './readString';
+import type { ParserContext } from '../utils/yaml/ParserContext';
+import { readBoolean, readNumber, readStringList } from '../utils/yaml/readScalars';
+import { mappingEntry, readSection, type SectionEntry } from '../utils/yaml/readSection';
+import { readString } from '../utils/yaml/readString';
 
 // https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/parameters-section-structure.html
 const PROPERTIES: ReadonlySet<string> = new Set<ParameterProperty>([

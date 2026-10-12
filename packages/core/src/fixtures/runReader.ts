@@ -1,7 +1,7 @@
 import { isMap, type YAMLMap } from 'yaml';
 
-import { parseYaml } from '../lib/parseYaml';
-import { ParserContext } from '../lib/ParserContext';
+import { parseYaml } from '../utils/yaml/parseYaml';
+import { ParserContext } from '../utils/yaml/ParserContext';
 
 type Reader<T> = (root: YAMLMap.Parsed, ctx: ParserContext) => T;
 

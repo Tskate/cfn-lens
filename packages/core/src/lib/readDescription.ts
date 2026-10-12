@@ -1,8 +1,8 @@
 import type { YAMLMap } from 'yaml';
 
 import { utf8ByteLength } from '../utils/utf8ByteLength';
-import type { ParserContext } from './ParserContext';
-import { readOptionalString } from './readOptionalString';
+import type { ParserContext } from '../utils/yaml/ParserContext';
+import { readOptionalString } from '../utils/yaml/readOptionalString';
 
 // https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/template-description-structure.html
 const MAX_DESCRIPTION_BYTES = 1024;

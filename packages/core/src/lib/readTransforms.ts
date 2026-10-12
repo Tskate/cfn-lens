@@ -1,7 +1,7 @@
 import { isMap, isSeq, type ParsedNode, type YAMLMap } from 'yaml';
 
-import type { ParserContext } from './ParserContext';
-import { readString } from './readString';
+import type { ParserContext } from '../utils/yaml/ParserContext';
+import { readString } from '../utils/yaml/readString';
 
 // https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/transform-section-structure.html
 // Shapes: a name, a list of names (applied in order), or { Name, Parameters } (e.g. AWS::Include).

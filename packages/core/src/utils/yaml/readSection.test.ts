@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import type { YAMLMap } from 'yaml';
 
-import { runReader } from '../fixtures/runReader.ts';
+import { runReader } from '../../fixtures/runReader.ts';
 import type { ParserContext } from './ParserContext.ts';
 import { mappingEntry, readSection, type SectionEntry } from './readSection.ts';
 

@@ -1,7 +1,7 @@
 import type { YAMLMap } from 'yaml';
 
-import type { ParserContext } from './ParserContext';
-import { readOptionalString } from './readOptionalString';
+import type { ParserContext } from '../utils/yaml/ParserContext';
+import { readOptionalString } from '../utils/yaml/readOptionalString';
 
 const SUPPORTED_FORMAT_VERSION = '2010-09-09';
 

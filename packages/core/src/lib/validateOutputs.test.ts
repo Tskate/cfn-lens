@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import type { YAMLMap } from 'yaml';
 
 import { runReader } from '../fixtures/runReader.ts';
-import type { ParserContext } from './ParserContext.ts';
+import type { ParserContext } from '../utils/yaml/ParserContext.ts';
 import { readConditions } from './readConditions.ts';
 import { readOutputs } from './readOutputs.ts';
 import { validateOutputs } from './validateOutputs.ts';

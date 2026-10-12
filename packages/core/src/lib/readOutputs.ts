@@ -2,11 +2,11 @@ import { isMap, isScalar, type ParsedNode, type YAMLMap } from 'yaml';
 
 import type { Output, OutputProperty, SourceRange, TemplateValue } from '../types';
 import { utf8ByteLength } from '../utils/utf8ByteLength';
-import { isIntrinsic } from './intrinsics';
-import type { ParserContext } from './ParserContext';
-import { mappingEntry, readSection, type SectionEntry } from './readSection';
-import { readString } from './readString';
-import { readValue } from './readValue';
+import { isIntrinsic } from '../utils/yaml/intrinsics';
+import type { ParserContext } from '../utils/yaml/ParserContext';
+import { mappingEntry, readSection, type SectionEntry } from '../utils/yaml/readSection';
+import { readString } from '../utils/yaml/readString';
+import { readValue } from '../utils/yaml/readValue';
 
 // https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/outputs-section-structure.html
 const PROPERTIES: ReadonlySet<string> = new Set<OutputProperty>(['Value', 'Description', 'Export', 'Condition']);

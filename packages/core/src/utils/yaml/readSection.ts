@@ -1,6 +1,6 @@
 import { isMap, isScalar, type ParsedNode, type YAMLMap } from 'yaml';
 
-import type { SourceRange } from '../types';
+import type { SourceRange } from '../../types';
 import type { ParserContext } from './ParserContext';
 import { readString } from './readString';
 

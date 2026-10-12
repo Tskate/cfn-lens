@@ -2,9 +2,9 @@ import { isMap } from 'yaml';
 
 import type { Diagnostic, Format, Template } from '../types';
 import { detectFormat } from '../utils/detectFormat';
-import { checkEntryLimit } from './checkEntryLimit';
-import { parseYaml } from './parseYaml';
-import { ParserContext } from './ParserContext';
+import { checkEntryLimit } from '../utils/checkEntryLimit';
+import { parseYaml } from '../utils/yaml/parseYaml';
+import { ParserContext } from '../utils/yaml/ParserContext';
 import { readConditions } from './readConditions';
 import { readDescription } from './readDescription';
 import { readFormatVersion } from './readFormatVersion';

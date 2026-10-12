@@ -1,6 +1,6 @@
 import { isMap, isScalar, isSeq, type ParsedNode } from 'yaml';
 
-import type { TemplateValue } from '../types';
+import type { TemplateValue } from '../../types';
 import { readIntrinsicCall } from './intrinsics';
 import type { ParserContext } from './ParserContext';
 import { readString } from './readString';

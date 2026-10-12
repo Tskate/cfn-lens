@@ -1,6 +1,6 @@
 import type { Diagnostic, DiagnosticCode, DiagnosticSeverity, Parameter, ParameterProperty } from '../types';
-import { checkEntryLimit } from './checkEntryLimit';
-import { parseParameterType } from './parameterTypes';
+import { checkEntryLimit } from '../utils/checkEntryLimit';
+import { parseParameterType } from '../utils/parseParameterType';
 
 // https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/parameters-section-structure.html
 const MAX_PARAMETERS = 200;

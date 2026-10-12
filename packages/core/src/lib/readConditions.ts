@@ -1,10 +1,10 @@
 import { isScalar, isSeq, type ParsedNode, type YAMLMap } from 'yaml';
 
 import type { Condition, ConditionExpression, ConditionOperand } from '../types';
-import { readIntrinsicCall, type IntrinsicCall } from './intrinsics';
-import type { ParserContext } from './ParserContext';
-import { readSection, type SectionEntry } from './readSection';
-import { readString } from './readString';
+import { readIntrinsicCall, type IntrinsicCall } from '../utils/yaml/intrinsics';
+import type { ParserContext } from '../utils/yaml/ParserContext';
+import { readSection, type SectionEntry } from '../utils/yaml/readSection';
+import { readString } from '../utils/yaml/readString';
 
 // https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/conditions-section-structure.html
 export function readConditions(root: YAMLMap.Parsed, ctx: ParserContext): ReadonlyMap<string, Condition> {
