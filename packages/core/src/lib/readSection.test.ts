@@ -3,10 +3,10 @@ import type { YAMLMap } from 'yaml';
 
 import { runReader } from '../fixtures/runReader.ts';
 import type { ParserContext } from './ParserContext.ts';
-import { readSection, type SectionEntry } from './readSection.ts';
+import { mappingEntry, readSection, type SectionEntry } from './readSection.ts';
 
-// A trivial entry reader: keeps the name and the number of keys in the entry.
-const readEntry = (entry: SectionEntry) => ({ name: entry.name, keys: entry.node.items.length });
+// A trivial entry reader for mapping entries: keeps the name and the number of keys.
+const readEntry = mappingEntry((entry: SectionEntry<YAMLMap.Parsed>) => ({ name: entry.name, keys: entry.node.items.length }));
 const read = (source: string) =>
   runReader((root: YAMLMap.Parsed, ctx: ParserContext) => readSection(root, 'Section', ctx, readEntry), source);
 
@@ -87,13 +87,31 @@ describe('readSection', () => {
     ]);
   });
 
+  // Conditions are tagged lists (`!Equals [a, b]`), so readSection passes any node through
   it.each([
-    ['empty', `Section:\n  Env:`],
-    ['a string', `Section:\n  Env: hello`],
-  ])('skips and reports an entry that is %s instead of a mapping', (_label, source) => {
-    const { value, diagnostics } = read(source);
+    ['a tagged list', `Section:\n  Env: !Equals [a, b]`, 'YAMLSeq'],
+    ['a scalar', `Section:\n  Env: hello`, 'Scalar'],
+    ['empty', `Section:\n  Env:`, 'null'],
+    ['explicit null', `Section:\n  Env: ~`, 'null'],
+  ])('passes an entry that is %s to the reader', (_label, source, expected) => {
+    const { value, diagnostics } = runReader(
+      (root: YAMLMap.Parsed, ctx: ParserContext) => readSection(root, 'Section', ctx, (entry) => entry.node?.constructor.name ?? 'null'),
+      source,
+    );
 
-    expect(value.size).toBe(0);
-    expect(diagnostics).toEqual([expect.objectContaining({ severity: 'error', code: 'expected-mapping' })]);
+    expect(value.get('Env')).toBe(expected);
+    expect(diagnostics).toEqual([]);
+  });
+
+  describe('mappingEntry', () => {
+    it.each([
+      ['empty', `Section:\n  Env:`],
+      ['a string', `Section:\n  Env: hello`],
+    ])('skips and reports an entry that is %s instead of a mapping', (_label, source) => {
+      const { value, diagnostics } = read(source);
+
+      expect(value.size).toBe(0);
+      expect(diagnostics).toEqual([expect.objectContaining({ severity: 'error', code: 'expected-mapping' })]);
+    });
   });
 });

@@ -1,7 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import type { SourceRange } from '../types';
-import type { Parameter, ParameterProperty } from '../types/template';
+import type { Parameter, ParameterProperty, SourceRange } from '../types';
 import { validateParameter, validateParameters } from './validateParameters.ts';
 
 // Every property gets its own line, so tests can check which property a diagnostic points at.

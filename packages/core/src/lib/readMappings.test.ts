@@ -97,6 +97,17 @@ describe('readMappings', () => {
     expect(diagnostics).toEqual([expect.objectContaining({ severity: 'error', code: 'intrinsic-not-allowed' })]);
   });
 
+  it('underlines a short-form intrinsic from its tag', () => {
+    const { diagnostics } = runReader(readMappings, `Mappings:\n  RegionMap:\n    us-east-1:\n      Ami: !Ref ImageParam`);
+
+    expect(diagnostics).toEqual([
+      expect.objectContaining({
+        code: 'intrinsic-not-allowed',
+        range: expect.objectContaining({ start: expect.objectContaining({ line: 4, column: 12 }) }),
+      }),
+    ]);
+  });
+
   it('reports an attribute name longer than 255 characters', () => {
     const { diagnostics } = runReader(readMappings, `Mappings:\n  RegionMap:\n    us-east-1:\n      ${'a'.repeat(256)}: x`);
 

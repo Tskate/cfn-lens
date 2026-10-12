@@ -1,5 +1,4 @@
-import type { Diagnostic, DiagnosticCode, DiagnosticSeverity } from '../types';
-import type { Parameter, ParameterProperty } from '../types/template';
+import type { Diagnostic, DiagnosticCode, DiagnosticSeverity, Parameter, ParameterProperty } from '../types';
 import { checkEntryLimit } from './checkEntryLimit';
 import { parseParameterType } from './parameterTypes';
 

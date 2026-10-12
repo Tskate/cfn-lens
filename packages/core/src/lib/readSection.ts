@@ -4,26 +4,29 @@ import type { SourceRange } from '../types';
 import type { ParserContext } from './ParserContext';
 import { readString } from './readString';
 
-export type SectionEntry = {
+// `node` is null when the entry has no value (`Name:` or `Name: ~`).
+export type SectionEntry<TNode extends ParsedNode | null = ParsedNode | null> = {
   name: string;
   nameNode: ParsedNode;
-  node: YAMLMap.Parsed;
+  node: TNode;
   nameRange: SourceRange;
   range: SourceRange;
 };
+
+type EntryReader<T, TNode extends ParsedNode | null> = (entry: SectionEntry<TNode>, ctx: ParserContext) => T | undefined;
 
 // https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/resources-section-structure.html#resources-section-logical-id
 const LOGICAL_ID = /^[A-Za-z0-9]+$/;
 // https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/cloudformation-limits.html
 export const MAX_NAME_LENGTH = 255;
 
-// Reads a section that maps logical IDs to mappings (Parameters, Mappings, Resources, Outputs).
-// Missing or empty → empty map. Entries that are not mappings are reported and skipped.
+// Reads a section that maps logical IDs to definitions (Parameters, Mappings, Conditions, Resources, Outputs).
+// Missing or empty → empty map. Entries whose reader returns undefined are left out.
 export function readSection<T>(
   root: YAMLMap.Parsed,
   key: string,
   ctx: ParserContext,
-  readEntry: (entry: SectionEntry, ctx: ParserContext) => T | undefined,
+  readEntry: EntryReader<T, ParsedNode | null>,
 ): ReadonlyMap<string, T> {
   const entries = new Map<string, T>();
   const section = root.get(key, true) as ParsedNode | undefined;
@@ -52,15 +55,9 @@ export function readSection<T>(
       ctx.error('name-too-long', `Logical IDs can be at most ${MAX_NAME_LENGTH} characters.`, nameNode);
     }
 
-    if (!isMap(value)) {
-      ctx.error('expected-mapping', `${name} must be a mapping.`, value ?? nameNode);
-      continue;
-    }
-
-    const entry = readEntry(
-      { name, nameNode, node: value, nameRange: ctx.rangeOf(nameNode), range: ctx.rangeOf([nameNode.range[0], value.range[1]]) },
-      ctx,
-    );
+    const node = value && !(isScalar(value) && value.value === null) ? value : null;
+    const end = (node ?? nameNode).range[1];
+    const entry = readEntry({ name, nameNode, node, nameRange: ctx.rangeOf(nameNode), range: ctx.rangeOf([nameNode.range[0], end]) }, ctx);
 
     if (entry !== undefined) {
       entries.set(name, entry);
@@ -68,4 +65,15 @@ export function readSection<T>(
   }
 
   return entries;
+}
+
+// For sections whose entries must be mappings (Parameters, Mappings, Resources, Outputs).
+export function mappingEntry<T>(readEntry: EntryReader<T, YAMLMap.Parsed>): EntryReader<T, ParsedNode | null> {
+  return (entry, ctx) => {
+    if (!isMap(entry.node)) {
+      ctx.error('expected-mapping', `${entry.name} must be a mapping.`, entry.node ?? entry.nameNode);
+      return undefined;
+    }
+    return readEntry({ ...entry, node: entry.node }, ctx);
+  };
 }

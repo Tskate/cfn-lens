@@ -1,16 +1,17 @@
 import { isMap } from 'yaml';
 
-import type { Template } from '../types/template';
-import type { Diagnostic, Format } from '../types';
+import type { Diagnostic, Format, Template } from '../types';
 import { detectFormat } from '../utils/detectFormat';
 import { checkEntryLimit } from './checkEntryLimit';
 import { parseYaml } from './parseYaml';
 import { ParserContext } from './ParserContext';
+import { readConditions } from './readConditions';
 import { readDescription } from './readDescription';
 import { readFormatVersion } from './readFormatVersion';
 import { readMappings } from './readMappings';
 import { readParameters } from './readParameters';
 import { readTransforms } from './readTransforms';
+import { validateConditions } from './validateConditions';
 import { validateParameters } from './validateParameters';
 
 // https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/cloudformation-limits.html
@@ -25,7 +26,7 @@ type ParseResult = {
 export function parseTemplate(sourceText: string): ParseResult {
   const { doc, lineCounter } = parseYaml(sourceText);
 
-  const ctx = new ParserContext(lineCounter);
+  const ctx = new ParserContext(lineCounter, sourceText);
   const format = detectFormat(sourceText);
   const result = (template: Template | null): ParseResult => ({ template, diagnostics: ctx.diagnostics, format });
 
@@ -54,12 +55,14 @@ export function parseTemplate(sourceText: string): ParseResult {
     transforms: readTransforms(root, ctx),
     parameters: readParameters(root, ctx),
     mappings: readMappings(root, ctx),
+    conditions: readConditions(root, ctx),
     resources: new Map(),
   };
 
   // Validation runs on the parsed model, once every section has been read.
   ctx.add(validateParameters(template.parameters));
   ctx.add(checkEntryLimit('Mappings', template.mappings, MAX_MAPPINGS));
+  ctx.add(validateConditions(template.conditions, template));
 
   return result(template);
 }

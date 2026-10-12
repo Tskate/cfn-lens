@@ -7,9 +7,11 @@ type Location = ParsedNode | readonly [start: number, end: number];
 export class ParserContext {
   readonly diagnostics: Diagnostic[] = [];
   readonly #lineCounter: LineCounter;
+  readonly #sourceText: string;
 
-  constructor(lineCounter: LineCounter) {
+  constructor(lineCounter: LineCounter, sourceText: string) {
     this.#lineCounter = lineCounter;
+    this.#sourceText = sourceText;
   }
 
   get hasErrors(): boolean {
@@ -30,7 +32,9 @@ export class ParserContext {
 
   rangeOf(at: Location): SourceRange {
     const [start, end] = 'range' in at ? at.range : at;
-    return { start: this.#position(start), end: this.#position(end) };
+    // A node's range starts after its tag; include the tag so `!Equals [a, b]` is underlined whole.
+    const tagStart = 'range' in at && at.tag?.startsWith('!') ? this.#sourceText.lastIndexOf(at.tag, start) : -1;
+    return { start: this.#position(tagStart >= 0 ? tagStart : start), end: this.#position(end) };
   }
 
   #report(severity: DiagnosticSeverity, code: DiagnosticCode, message: string, at?: Location): void {

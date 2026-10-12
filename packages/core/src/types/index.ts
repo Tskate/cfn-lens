@@ -26,10 +26,23 @@ export type DiagnosticCode =
   | 'default-violates-constraint'
   | 'too-many-entries'
   | 'name-too-long'
-  | 'intrinsic-not-allowed';
+  | 'intrinsic-not-allowed'
+  | 'expected-condition-function'
+  | 'function-not-allowed'
+  | 'invalid-arguments'
+  | 'invalid-ref'
+  | 'unknown-condition'
+  | 'unknown-mapping'
+  | 'unknown-mapping-key'
+  | 'circular-condition'
+  | 'constant-condition';
 export type Diagnostic = {
   severity: DiagnosticSeverity;
   code: DiagnosticCode;
   message: string;
   range?: SourceRange;
 };
+
+export * from './parameters';
+export * from './conditions';
+export * from './template';

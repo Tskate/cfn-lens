@@ -1,18 +1,18 @@
 import { isMap, isScalar, isSeq, type ParsedNode, type YAMLMap } from 'yaml';
 
-import type { Mapping, MappingValue } from '../types/template';
+import type { Mapping, MappingValue } from '../types';
 import { isIntrinsic } from './intrinsics';
 import type { ParserContext } from './ParserContext';
-import { MAX_NAME_LENGTH, readSection, type SectionEntry } from './readSection';
+import { mappingEntry, MAX_NAME_LENGTH, readSection, type SectionEntry } from './readSection';
 import { readString } from './readString';
 
 // https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/mappings-section-structure.html
 // MappingName → top-level key → attribute → String | List. Only literals: no intrinsic functions.
 export function readMappings(root: YAMLMap.Parsed, ctx: ParserContext): ReadonlyMap<string, Mapping> {
-  return readSection(root, 'Mappings', ctx, readMapping);
+  return readSection(root, 'Mappings', ctx, mappingEntry(readMapping));
 }
 
-function readMapping({ name, node, nameRange, range }: SectionEntry, ctx: ParserContext): Mapping {
+function readMapping({ name, node, nameRange, range }: SectionEntry<YAMLMap.Parsed>, ctx: ParserContext): Mapping {
   const entries = new Map<string, ReadonlyMap<string, MappingValue>>();
 
   for (const { key, value } of node.items) {

@@ -13,6 +13,6 @@ export function runReader<T>(reader: Reader<T>, source: string) {
     throw new Error(`Test source must be a YAML mapping:\n${source}`);
   }
 
-  const ctx = new ParserContext(lineCounter);
+  const ctx = new ParserContext(lineCounter, source);
   return { value: reader(doc.contents, ctx), diagnostics: ctx.diagnostics };
 }

@@ -1,10 +1,9 @@
 import { isScalar, type ParsedNode, type YAMLMap } from 'yaml';
 
-import type { SourceRange } from '../types';
-import type { Parameter, ParameterProperty } from '../types/template';
+import type { Parameter, ParameterProperty, SourceRange } from '../types';
 import type { ParserContext } from './ParserContext';
 import { readBoolean, readNumber, readStringList } from './readScalars';
-import { readSection, type SectionEntry } from './readSection';
+import { mappingEntry, readSection, type SectionEntry } from './readSection';
 import { readString } from './readString';
 
 // https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/parameters-section-structure.html
@@ -23,10 +22,13 @@ const PROPERTIES: ReadonlySet<string> = new Set<ParameterProperty>([
 ]);
 
 export function readParameters(root: YAMLMap.Parsed, ctx: ParserContext): ReadonlyMap<string, Parameter> {
-  return readSection(root, 'Parameters', ctx, readParameter);
+  return readSection(root, 'Parameters', ctx, mappingEntry(readParameter));
 }
 
-function readParameter({ name, nameNode, node, nameRange, range }: SectionEntry, ctx: ParserContext): Parameter | undefined {
+function readParameter(
+  { name, nameNode, node, nameRange, range }: SectionEntry<YAMLMap.Parsed>,
+  ctx: ParserContext,
+): Parameter | undefined {
   const propertyRanges: Partial<Record<ParameterProperty, SourceRange>> = {};
 
   for (const { key, value } of node.items) {
