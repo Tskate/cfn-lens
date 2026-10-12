@@ -1,24 +1,14 @@
-import type { SourceRange } from '.';
-import type { Condition } from './conditions';
-import type { Output } from './outputs';
-import type { Parameter } from './parameters';
+import type { SourceRange } from './diagnostics';
+import type { Condition, Mapping, Output, Parameter, Resource } from './sections';
 
-// https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/mappings-section-structure.html
-export type MappingValue = string | readonly string[];
+export type Format = 'yaml' | 'json' | 'unknown';
 
-export type Mapping = {
-  name: string;
-  // Top-level key (e.g. a Region) → attribute name → value, in source order.
-  entries: ReadonlyMap<string, ReadonlyMap<string, MappingValue>>;
-  nameRange: SourceRange;
-  range: SourceRange;
-};
-type Resource = {
-  logicalId: string;
-  ///AWS::ServiceName::ResourceType https://docs.aws.amazon.com/AWSCloudFormation/latest/TemplateReference/aws-template-resource-type-ref.html
-  type: string;
-  properties: Record<string, unknown>;
-};
+// Any value that may contain intrinsic functions (Output values, resource properties).
+export type TemplateValue =
+  | { kind: 'scalar'; value: string | number | boolean | null; range: SourceRange }
+  | { kind: 'list'; items: readonly TemplateValue[]; range: SourceRange }
+  | { kind: 'object'; entries: ReadonlyMap<string, TemplateValue>; range: SourceRange }
+  | { kind: 'intrinsic'; fn: string; arg: TemplateValue; range: SourceRange };
 
 export type Template = {
   // '2010-09-09' is only valid for now https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/format-version-structure.html
