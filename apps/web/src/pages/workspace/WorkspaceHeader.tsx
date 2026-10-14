@@ -5,11 +5,12 @@ import { Switch } from '@/components/primitives/switch';
 
 interface WorkspaceHeaderProps {
   documentName: string;
+  foldedCount: number;
   showAllResources: boolean;
   onShowAllResourcesChange: (checked: boolean) => void;
 }
 
-export function WorkspaceHeader({ documentName, showAllResources, onShowAllResourcesChange }: WorkspaceHeaderProps) {
+export function WorkspaceHeader({ documentName, foldedCount, showAllResources, onShowAllResourcesChange }: WorkspaceHeaderProps) {
   return (
     <header className="flex flex-none flex-wrap items-center gap-x-4 gap-y-3 border-b bg-background px-4 py-2.5">
       <h1 className="sr-only">Workspace</h1>
@@ -28,6 +29,9 @@ export function WorkspaceHeader({ documentName, showAllResources, onShowAllResou
       <label className="flex cursor-pointer items-center gap-2.5">
         <Switch checked={showAllResources} onCheckedChange={onShowAllResourcesChange} />
         Show all resources
+        {foldedCount > 0 && (
+          <span className="rounded-full bg-neutral-100 px-2 py-0.5 text-xs text-neutral-600 tabular-nums">{foldedCount} folded</span>
+        )}
       </label>
       <Link to="/" className={buttonVariants({ variant: 'outline', className: 'h-8.5 gap-1.5 px-3' })}>
         <Plus aria-hidden="true" />

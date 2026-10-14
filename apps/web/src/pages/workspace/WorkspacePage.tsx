@@ -1,8 +1,9 @@
-import { parseTemplate } from '@cfn-lens/core';
+import { buildDiagram, parseTemplate, type DiagramModel, type ParseResult } from '@cfn-lens/core';
 import { useState } from 'react';
 import { useLocation, useSearchParams } from 'react-router';
 import { DetailsArea } from '@/features/details/DetailsArea';
 import { DiagramArea } from '@/features/diagram/DiagramArea';
+import { countFolded } from '@/features/diagram/countFolded';
 import { EditorArea } from '@/features/editor/EditorArea';
 import { samples } from '@/features/samples/samples';
 import { readTemplateHandoff } from '@/features/template-input/templateHandoff';
@@ -13,25 +14,40 @@ import { WorkspaceLayout } from './WorkspaceLayout';
 export function WorkspacePage() {
   const [searchParams] = useSearchParams();
   const location = useLocation();
-  // TODO: feeds the diagram's plumbing collapse (D28) once the diagram model exists.
   const [showAllResources, setShowAllResources] = useState(false);
 
   const sample = samples.find((candidate) => candidate.id === searchParams.get('sample'));
   const pastedTemplate = readTemplateHandoff(location.state);
   const documentName = sample?.title ?? (pastedTemplate ? 'Pasted template' : 'Untitled template');
   const parseResult = pastedTemplate === undefined ? undefined : parseTemplate(pastedTemplate);
+  const diagram = toDiagram(parseResult, showAllResources);
 
   return (
     <>
       <title>{`${documentName} · cfn-lens`}</title>
       <WorkspaceLayout
         header={
-          <WorkspaceHeader documentName={documentName} showAllResources={showAllResources} onShowAllResourcesChange={setShowAllResources} />
+          <WorkspaceHeader
+            documentName={documentName}
+            foldedCount={countFolded(diagram)}
+            showAllResources={showAllResources}
+            onShowAllResourcesChange={setShowAllResources}
+          />
         }
         editor={<EditorArea template={pastedTemplate} diagnostics={parseResult?.diagnostics ?? []} />}
-        diagram={<DiagramArea parseResult={parseResult} />}
+        diagram={<DiagramArea parseResult={parseResult} diagram={diagram} />}
         details={<DetailsArea />}
       />
     </>
   );
+}
+
+function toDiagram(parseResult: ParseResult | undefined, showAllResources: boolean): DiagramModel | undefined {
+  const template = parseResult?.template;
+
+  if (!template) {
+    return;
+  }
+
+  return buildDiagram(template, { foldPlumbing: !showAllResources });
 }

@@ -1,7 +1,8 @@
+import type { ResourceIcon } from '@cfn-lens/core';
 import type { ReactNode } from 'react';
 import { cn } from 'cn';
 
-type Category = 'network' | 'compute' | 'database' | 'integration' | 'storage';
+type Category = 'network' | 'compute' | 'database' | 'integration' | 'storage' | 'security' | 'unknown';
 
 // Full class names (not built from strings) so Tailwind can find them when scanning the source.
 const categoryClasses: Record<Category, string> = {
@@ -10,6 +11,8 @@ const categoryClasses: Record<Category, string> = {
   database: 'text-category-database bg-category-database-tint',
   integration: 'text-category-integration bg-category-integration-tint',
   storage: 'text-category-storage bg-category-storage-tint',
+  security: 'text-category-security bg-category-security-tint',
+  unknown: 'text-neutral-600 bg-neutral-100',
 };
 
 const icons = {
@@ -68,6 +71,26 @@ const icons = {
       </>
     ),
   },
+  network: {
+    category: 'network',
+    shape: (
+      <>
+        <circle cx="12" cy="12" r="9" />
+        <path d="M3 12h18M12 3c3 3.5 3 14.5 0 18M12 3c-3 3.5-3 14.5 0 18" />
+      </>
+    ),
+  },
+  natGateway: { category: 'network', shape: <path d="M4 8h14l-3-3M20 16H6l3 3" /> },
+  shield: { category: 'security', shape: <path d="M12 3l8 3v6c0 5-3.5 8-8 9-4.5-1-8-4-8-9V6z" /> },
+  topic: {
+    category: 'integration',
+    shape: (
+      <>
+        <path d="M4 10v4h3l6 4V6l-6 4H4z" />
+        <path d="M17 9a4 4 0 0 1 0 6" />
+      </>
+    ),
+  },
   bucket: {
     category: 'storage',
     shape: (
@@ -86,12 +109,21 @@ const icons = {
       </>
     ),
   },
-} satisfies Record<string, { category: Category; shape: ReactNode }>;
+  unknown: {
+    category: 'unknown',
+    shape: (
+      <>
+        <rect x="4" y="4" width="16" height="16" rx="3" />
+        <path d="M9.5 9.5a2.5 2.5 0 1 1 3.5 2.3c-.6.3-1 .8-1 1.5V14M12 17h.01" />
+      </>
+    ),
+  },
+} satisfies Record<ResourceIcon, { category: Category; shape: ReactNode }>;
 
-export type ServiceIconName = keyof typeof icons;
+export type ServiceIconName = ResourceIcon;
 
 /** Decorative service tile: a stroke icon on a category-tinted square. */
-export function ServiceIcon({ name }: { name: ServiceIconName }) {
+export function ServiceIcon({ name, className }: { name: ServiceIconName; className?: string }) {
   const { category, shape } = icons[name];
   return (
     <svg
@@ -102,7 +134,7 @@ export function ServiceIcon({ name }: { name: ServiceIconName }) {
       strokeLinecap="round"
       strokeLinejoin="round"
       aria-hidden="true"
-      className={cn('size-8 rounded-md', categoryClasses[category])}
+      className={cn('size-8 flex-none rounded-md', categoryClasses[category], className)}
     >
       {shape}
     </svg>

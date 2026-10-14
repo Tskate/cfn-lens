@@ -18,14 +18,18 @@
   --color-category-integration-tint: #fbeaf2;
   --color-category-storage: #227a43;
   --color-category-storage-tint: #e8f5ec;
+  --color-category-security: #b42318;
+  --color-category-security-tint: #fdecec;
 
   /* Diagram groups: VPC › Availability Zone › subnet. */
   --color-group-vpc: #8a8a8a;
   --color-group-az: #b5b5b5;
   --color-subnet-public: #f2faf4;
   --color-subnet-public-border: #bfe3cb;
+  --color-subnet-public-text: #1f6b3a;
   --color-subnet-private: #f3f6fd;
   --color-subnet-private-border: #cbd7f0;
+  --color-subnet-private-text: #1d4fb8;
   --color-fold-badge: #262626;
 }
 

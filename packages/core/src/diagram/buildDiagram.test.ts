@@ -15,17 +15,63 @@ const resource = (name: string, ...properties: string[]) =>
   [`  ${name}:`, `    Type: AWS::SNS::Topic`, `    Properties:`, ...properties.map((line) => `      ${line}`)].join('\n');
 
 describe('buildDiagram', () => {
-  it('has no nodes or edges without resources', () => {
-    expect(buildDiagram(parseTemplate('Description: x').template as Template)).toEqual({ nodes: [], edges: [] });
+  it('has no groups, nodes or edges without resources', () => {
+    expect(buildDiagram(parseTemplate('Description: x').template as Template)).toEqual({ groups: [], nodes: [], edges: [], absorbed: [] });
   });
 
   it('makes one node per resource, in template order', () => {
-    const { nodes } = diagram(`  Vpc:\n    Type: AWS::EC2::VPC\n  Bucket:\n    Type: AWS::S3::Bucket\n    Condition: IsProd`);
+    const { nodes } = diagram(`  Queue:\n    Type: AWS::SQS::Queue\n  Bucket:\n    Type: AWS::S3::Bucket\n    Condition: IsProd`);
 
     expect(nodes).toEqual([
-      { id: 'Vpc', type: 'AWS::EC2::VPC', condition: undefined, range: at(5, 3) },
-      { id: 'Bucket', type: 'AWS::S3::Bucket', condition: 'IsProd', range: at(7, 3) },
+      {
+        id: 'Queue',
+        type: 'AWS::SQS::Queue',
+        typeName: 'SQS queue',
+        icon: 'queue',
+        condition: undefined,
+        range: at(5, 3),
+        parentId: undefined,
+        folded: [],
+      },
+      {
+        id: 'Bucket',
+        type: 'AWS::S3::Bucket',
+        typeName: 'S3 bucket',
+        icon: 'bucket',
+        condition: 'IsProd',
+        range: at(7, 3),
+        parentId: undefined,
+        folded: [],
+      },
     ]);
+  });
+
+  // Placement rules are covered in findContainment.test.ts
+  describe('containers', () => {
+    const network = [
+      `  Vpc:\n    Type: AWS::EC2::VPC`,
+      `  Subnet:\n    Type: AWS::EC2::Subnet\n    Properties:\n      VpcId: !Ref Vpc`,
+      `  Server:\n    Type: AWS::EC2::Instance\n    Properties:\n      SubnetId: !Ref Subnet\n      Topic: !Ref Alerts`,
+      resource('Alerts', 'Vpc: !Ref Vpc'),
+    ].join('\n');
+
+    it('turn VPCs and subnets into groups instead of nodes', () => {
+      const { groups, nodes } = diagram(network);
+
+      expect(groups.map(({ id }) => id)).toEqual(['Vpc', 'Subnet']);
+      expect(nodes.map(({ id }) => id)).toEqual(['Server', 'Alerts']);
+    });
+
+    it('give each node the group it sits in', () => {
+      expect(diagram(network).nodes.map(({ id, parentId }) => [id, parentId])).toEqual([
+        ['Server', 'Subnet'],
+        ['Alerts', 'Vpc'],
+      ]);
+    });
+
+    it('drop edges to groups, which placement already shows', () => {
+      expect(edges(network)).toEqual(['Server → Alerts']);
+    });
   });
 
   describe('edges', () => {
@@ -40,8 +86,8 @@ describe('buildDiagram', () => {
     });
 
     it('come from DependsOn', () => {
-      expect(diagram(`${resource('Vpc')}\n  Subnet:\n    Type: AWS::EC2::Subnet\n    DependsOn: Vpc`).edges).toEqual([
-        { source: 'Subnet', target: 'Vpc', via: ['DependsOn'] },
+      expect(diagram(`${resource('Vpc')}\n  Server:\n    Type: AWS::EC2::Instance\n    DependsOn: Vpc`).edges).toEqual([
+        { source: 'Server', target: 'Vpc', via: ['DependsOn'] },
       ]);
     });
 
