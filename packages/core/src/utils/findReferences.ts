@@ -1,10 +1,10 @@
-import type { SourceRange, TemplateValue } from '../types';
+import type { ReferenceFunction, SourceRange, TemplateValue } from '../types';
 
 // target is a logical ID or pseudo parameter as written; callers decide which ones they care about.
 export type ValueReference = {
   target: string;
   attribute?: string;
-  via: 'Ref' | 'Fn::GetAtt' | 'Fn::Sub';
+  via: ReferenceFunction;
   range: SourceRange;
 };
 

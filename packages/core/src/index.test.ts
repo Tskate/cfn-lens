@@ -13,7 +13,7 @@ describe('@cfn-lens/core', () => {
     expect(diagnostics satisfies Diagnostic[]).toEqual([]);
   });
 
-  it('exports only the parser at runtime; types are erased', async () => {
-    expect(Object.keys(await import('./index.ts'))).toEqual(['parseTemplate']);
+  it('exports only the parser and diagram builder at runtime; types are erased', async () => {
+    expect(Object.keys(await import('./index.ts'))).toEqual(['parseTemplate', 'buildDiagram']);
   });
 });
