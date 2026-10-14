@@ -1,3 +1,4 @@
+import { parseTemplate } from '@cfn-lens/core';
 import { useState } from 'react';
 import { useLocation, useSearchParams } from 'react-router';
 import { DetailsArea } from '@/features/details/DetailsArea';
@@ -18,6 +19,7 @@ export function WorkspacePage() {
   const sample = samples.find((candidate) => candidate.id === searchParams.get('sample'));
   const pastedTemplate = readTemplateHandoff(location.state);
   const documentName = sample?.title ?? (pastedTemplate ? 'Pasted template' : 'Untitled template');
+  const parseResult = pastedTemplate === undefined ? undefined : parseTemplate(pastedTemplate);
 
   return (
     <>
@@ -26,8 +28,8 @@ export function WorkspacePage() {
         header={
           <WorkspaceHeader documentName={documentName} showAllResources={showAllResources} onShowAllResourcesChange={setShowAllResources} />
         }
-        editor={<EditorArea template={pastedTemplate} />}
-        diagram={<DiagramArea />}
+        editor={<EditorArea template={pastedTemplate} diagnostics={parseResult?.diagnostics ?? []} />}
+        diagram={<DiagramArea parseResult={parseResult} />}
         details={<DetailsArea />}
       />
     </>
