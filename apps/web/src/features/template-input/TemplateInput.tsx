@@ -1,6 +1,7 @@
 import { ArrowRight, FileUp, Upload } from 'lucide-react';
 import { useId, useState, type ChangeEvent, type FormEvent } from 'react';
 import { useNavigate } from 'react-router';
+import { cn } from 'cn';
 import { Button } from '@/components/primitives/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/primitives/tabs';
 import { Textarea } from '@/components/primitives/textarea';
@@ -15,6 +16,8 @@ Resources:
 
 const triggerClass =
   'h-9 flex-none px-3.5 text-sm text-neutral-600 data-active:border-border data-active:text-foreground group-data-[variant=default]/tabs-list:data-active:shadow-none';
+
+const panelClass = 'h-55 flex-none';
 
 export function TemplateInput() {
   const textareaId = useId();
@@ -56,7 +59,7 @@ export function TemplateInput() {
           </TabsTrigger>
         </TabsList>
 
-        <TabsContent value="paste">
+        <TabsContent value="paste" className={panelClass}>
           <label htmlFor={textareaId} className="sr-only">
             Template
           </label>
@@ -66,11 +69,11 @@ export function TemplateInput() {
             onChange={(event) => setTemplate(event.target.value)}
             placeholder={PLACEHOLDER}
             spellCheck={false}
-            className="h-55 resize-none rounded-none border-0 px-5 py-4 font-mono text-[13px]/5 shadow-none field-sizing-fixed focus-visible:ring-0 md:text-[13px]/5"
+            className="h-full resize-none rounded-none border-0 px-5 py-4 font-mono text-[13px]/5 shadow-none field-sizing-fixed focus-visible:ring-0 md:text-[13px]/5"
           />
         </TabsContent>
 
-        <TabsContent value="upload" className="grid h-55 place-items-center">
+        <TabsContent value="upload" className={cn(panelClass, 'grid place-items-center')}>
           <label className="flex cursor-pointer flex-col items-center gap-2 rounded-lg px-6 py-4 text-sm text-neutral-600 hover:text-foreground has-focus-visible:ring-3 has-focus-visible:ring-ring/50">
             <FileUp className="size-6" aria-hidden="true" />
             Choose a .yaml or .json file
