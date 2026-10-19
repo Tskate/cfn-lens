@@ -8,8 +8,13 @@ export interface TemplateHandoff {
  * so it's validated rather than cast.
  */
 export function readTemplateHandoff(state: unknown): string | undefined {
-  if (typeof state === 'object' && state !== null && 'template' in state && typeof state.template === 'string') {
-    return state.template;
+  const isNonEmptyObject = typeof state === 'object' && state !== null;
+
+  if (!isNonEmptyObject) {
+    return;
   }
-  return undefined;
+
+  const hasTemplateProperty = 'template' in state && typeof state.template === 'string';
+
+  return hasTemplateProperty ? String(state.template) : undefined;
 }

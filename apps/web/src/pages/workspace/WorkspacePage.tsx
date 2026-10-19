@@ -17,7 +17,7 @@ export function WorkspacePage() {
   const [showAllResources, setShowAllResources] = useState(false);
 
   const sample = samples.find((candidate) => candidate.id === searchParams.get('sample'));
-  const pastedTemplate = readTemplateHandoff(location.state);
+  const pastedTemplate = sample?.template ?? readTemplateHandoff(location.state);
   const documentName = sample?.title ?? (pastedTemplate ? 'Pasted template' : 'Untitled template');
   const parseResult = pastedTemplate === undefined ? undefined : parseTemplate(pastedTemplate);
   const diagram = toDiagram(parseResult, showAllResources);
