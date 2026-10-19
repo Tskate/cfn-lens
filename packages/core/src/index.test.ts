@@ -14,6 +14,6 @@ describe('@cfn-lens/core', () => {
   });
 
   it('exports only the parser and diagram builder at runtime; types are erased', async () => {
-    expect(Object.keys(await import('./index.ts'))).toEqual(['parseTemplate', 'buildDiagram']);
+    expect(Object.keys(await import('./index.ts'))).toEqual(['parseTemplate', 'buildDiagram', 'summarizeProperties']);
   });
 });

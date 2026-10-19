@@ -10,9 +10,11 @@ interface DiagramAreaProps {
   /** Undefined until a template is loaded. */
   parseResult: ParseResult | undefined;
   diagram: DiagramModel | undefined;
+  selectedId: string | undefined;
+  onSelect: (id: string | undefined) => void;
 }
 
-export function DiagramArea({ parseResult, diagram }: DiagramAreaProps) {
+export function DiagramArea({ parseResult, diagram, selectedId, onSelect }: DiagramAreaProps) {
   // While a new diagram lays out (e.g. after "Show all resources"), keep showing the previous one
   const deferredDiagram = useDeferredValue(diagram);
 
@@ -21,14 +23,14 @@ export function DiagramArea({ parseResult, diagram }: DiagramAreaProps) {
       aria-label="Architecture diagram"
       className="relative h-full overflow-hidden bg-[#f7f7f7] bg-[radial-gradient(var(--color-neutral-300)_1px,transparent_1px)] bg-size-[16px_16px]"
     >
-      <DiagramContent parseResult={parseResult} diagram={deferredDiagram} />
+      <DiagramContent parseResult={parseResult} diagram={deferredDiagram} selectedId={selectedId} onSelect={onSelect} />
       <ZoomControls />
       <DiagramGuide />
     </section>
   );
 }
 
-function DiagramContent({ parseResult, diagram }: DiagramAreaProps) {
+function DiagramContent({ parseResult, diagram, selectedId, onSelect }: DiagramAreaProps) {
   const blockingProblem = findBlockingProblem(parseResult);
 
   if (blockingProblem) {
@@ -52,7 +54,7 @@ function DiagramContent({ parseResult, diagram }: DiagramAreaProps) {
   return (
     <div className="absolute inset-0">
       <Suspense fallback={<LayingOut />}>
-        <DiagramCanvas model={diagram} />
+        <DiagramCanvas model={diagram} selectedId={selectedId} onSelect={onSelect} />
       </Suspense>
     </div>
   );

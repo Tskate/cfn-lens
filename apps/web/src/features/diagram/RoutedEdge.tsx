@@ -1,7 +1,10 @@
 import { BaseEdge, type EdgeProps, type XYPosition } from '@xyflow/react';
 import type { RoutedFlowEdge } from './layoutDiagram';
 
-const edgeStyle = { stroke: 'var(--color-group-vpc)', strokeWidth: 2 };
+const edgeStyles = {
+  regular: { stroke: 'var(--color-group-vpc)', strokeWidth: 2 },
+  highlighted: { stroke: 'var(--color-blue-600)', strokeWidth: 2 },
+};
 
 /** Draws the route ELK computed, so edges keep their right angles and avoid nodes. */
 export function RoutedEdge({ data, markerEnd }: EdgeProps<RoutedFlowEdge>) {
@@ -11,7 +14,8 @@ export function RoutedEdge({ data, markerEnd }: EdgeProps<RoutedFlowEdge>) {
     return null;
   }
 
-  return <BaseEdge path={toPath(start, rest)} markerEnd={markerEnd} style={edgeStyle} />;
+  const style = data?.highlighted ? edgeStyles.highlighted : edgeStyles.regular;
+  return <BaseEdge path={toPath(start, rest)} markerEnd={markerEnd} style={style} />;
 }
 
 function toPath(start: XYPosition, rest: XYPosition[]): string {
