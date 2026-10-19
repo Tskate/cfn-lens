@@ -31,6 +31,8 @@
   --color-subnet-private-border: #cbd7f0;
   --color-subnet-private-text: #1d4fb8;
   --color-fold-badge: #262626;
+
+  --color-link: #1d4fb8;
 }
 
 @theme inline {
