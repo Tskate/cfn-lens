@@ -2,10 +2,12 @@ import type { DiagramModel } from '@cfn-lens/core';
 import { applyNodeChanges, MarkerType, ReactFlow, type NodeChange } from '@xyflow/react';
 import '@xyflow/react/dist/base.css';
 import { use, useState } from 'react';
+import { CanvasViewport } from './CanvasViewport';
 import { ContainerNode } from './ContainerNode';
 import { loadLayout, type DiagramFlowNode, type DiagramLayout, type RoutedFlowEdge } from './layoutDiagram';
 import { ResourceNode } from './ResourceNode';
 import { RoutedEdge } from './RoutedEdge';
+import { FIT_VIEW_OPTIONS, MAX_ZOOM, MIN_ZOOM } from './viewport';
 
 // Outside the component: React Flow re-creates every node when these objects change.
 const nodeTypes = { resource: ResourceNode, container: ContainerNode };
@@ -32,6 +34,7 @@ function FlowCanvas({ layout, selectedId, onSelect }: Omit<DiagramCanvasProps, '
   // Controlled nodes: React Flow measures them and reports the sizes as changes, which must be
   // applied, or it can't find the handles edges attach to. Selection is the exception: the page owns it.
   const [flowNodes, setFlowNodes] = useState(layout.nodes);
+  const [followsSize, setFollowsSize] = useState(true);
   const nodes = flowNodes.map((node) => markSelected(node, selectedId));
   const edges = layout.edges.map((edge) => markHighlighted(edge, selectedId));
 
@@ -56,14 +59,19 @@ function FlowCanvas({ layout, selectedId, onSelect }: Omit<DiagramCanvasProps, '
       edgeTypes={edgeTypes}
       onNodesChange={handleNodesChange}
       onPaneClick={() => onSelect(undefined)}
+      // An event means the person dragged or scrolled; moves made in code (fit, zoom buttons) pass null
+      onMoveStart={(event) => setFollowsSize((follows) => follows && event === null)}
       nodesDraggable={false}
       nodesConnectable={false}
       edgesFocusable={false}
       fitView
-      minZoom={0.2}
-      fitViewOptions={{ padding: 0.15, maxZoom: 1 }}
+      fitViewOptions={FIT_VIEW_OPTIONS}
+      minZoom={MIN_ZOOM}
+      maxZoom={MAX_ZOOM}
       attributionPosition="top-right"
-    />
+    >
+      <CanvasViewport followsSize={followsSize} onFollowsSizeChange={setFollowsSize} />
+    </ReactFlow>
   );
 }
 

@@ -64,7 +64,7 @@ export function DiagramGuide() {
     <Popover>
       <PopoverTrigger
         aria-label="How to read this diagram"
-        className="absolute right-4 bottom-4 flex min-h-9.5 cursor-pointer flex-wrap items-center gap-3.5 rounded-lg border bg-background py-1.5 pr-2 pl-3 text-xs text-neutral-600 outline-none focus-visible:ring-3 focus-visible:ring-ring/50 data-popup-open:border-blue-600"
+        className="absolute right-4 bottom-16 flex @lg:bottom-4 min-h-9.5 cursor-pointer flex-wrap items-center gap-3.5 rounded-lg border bg-background py-1.5 pr-2 pl-3 text-xs text-neutral-600 outline-none focus-visible:ring-3 focus-visible:ring-ring/50 data-popup-open:border-blue-600"
       >
         <span className="flex items-center gap-1.5">
           <span className="h-0.5 w-4.5 bg-group-vpc" />
