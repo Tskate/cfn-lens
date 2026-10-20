@@ -27,6 +27,7 @@ export type FoldedResource = {
   id: string;
   type: string;
   typeName: string;
+  icon: ResourceIcon;
   range: SourceRange;
 };
 
@@ -37,6 +38,8 @@ export type DiagramNode = {
   // Friendly type name, e.g. "EC2 instance"
   typeName: string;
   icon: ResourceIcon;
+  description?: string;
+  docsUrl?: string;
   condition?: string;
   range: SourceRange;
   // The group the resource sits in; none for resources outside every VPC

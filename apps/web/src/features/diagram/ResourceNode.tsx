@@ -12,15 +12,18 @@ const variants = {
   regular: { box: 'border border-[#e0e0e0] bg-background shadow-xs', tagSpace: 0 },
   conditional: { box: 'border-[1.5px] border-dashed border-neutral-500 bg-white/70', tagSpace: CONDITION_TAG_HEIGHT },
 };
+// 1px less padding keeps the content still when the border grows to 2px
+const selectedBox = 'border-2 border-blue-600 bg-background px-[11px] shadow-[0_0_0_4px_rgb(37_99_235/0.16),0_4px_12px_rgb(0_0_0/0.08)]';
 
-export function ResourceNode({ id, data }: NodeProps<ResourceFlowNode>) {
+export function ResourceNode({ id, data, selected }: NodeProps<ResourceFlowNode>) {
   const { resourceType, typeName, icon, condition, folded } = data;
   const variant = condition === undefined ? variants.regular : variants.conditional;
+  const box = selected ? selectedBox : variant.box;
 
   return (
     <div className="relative" style={{ paddingBottom: variant.tagSpace }}>
       <Handle type="target" position={Position.Top} isConnectable={false} className={handleClass} />
-      <div title={resourceType} className={cn('flex h-14 w-39 items-center gap-2.5 rounded-[10px] px-3 text-[13px]/4', variant.box)}>
+      <div title={resourceType} className={cn('flex h-14 w-39 items-center gap-2.5 rounded-[10px] px-3 text-[13px]/4', box)}>
         <ServiceIcon name={icon} className="rounded-lg" />
         <span className="min-w-0">
           <b className="block truncate font-semibold">{id}</b>
