@@ -1,16 +1,21 @@
-import type { Diagnostic, DiagnosticSeverity, SourceRange } from '@cfn-lens/core';
-import { useEffect, useId, useRef } from 'react';
+import type { Diagnostic, DiagnosticSeverity, Format, SourceRange } from '@cfn-lens/core';
+import { lazy, Suspense, useEffect, useId, useRef } from 'react';
 import { cn } from 'cn';
 import { DiagnosticIcon } from '@/features/diagnostics/DiagnosticIcon';
 import { formatLocation, sortDiagnostics, summarizeDiagnostics, worstSeverity } from '@/features/diagnostics/diagnostics';
-import { lineSpan, type LineSpan } from '@/features/source/lineSpan';
+import { optionalLineSpan, type LineSpan } from '@/features/source/lineSpan';
 
 interface EditorAreaProps {
-  template: string | undefined;
+  source: string | undefined;
+  format: Format | undefined;
   diagnostics: readonly Diagnostic[];
   // The selected resource's lines (or a line link's), drawn in blue
   highlight: SourceRange | undefined;
+  onChange: (source: string) => void;
 }
+
+// CodeMirror is a separate chunk (D30); until it arrives the read-only view stands in.
+const TemplateEditor = lazy(() => import('./TemplateEditor').then((module) => ({ default: module.TemplateEditor })));
 
 type LineClasses = { line: string; lineNumber: string };
 
@@ -35,7 +40,7 @@ const severityClasses: Record<DiagnosticSeverity, { summary: string; line: strin
   },
 };
 
-export function EditorArea({ template, diagnostics, highlight }: EditorAreaProps) {
+export function EditorArea({ source, format, diagnostics, highlight, onChange }: EditorAreaProps) {
   const headingId = useId();
   const severity = worstSeverity(diagnostics);
   const classes = severity && severityClasses[severity];
@@ -51,9 +56,11 @@ export function EditorArea({ template, diagnostics, highlight }: EditorAreaProps
           {summarizeDiagnostics(diagnostics)}
         </span>
       </div>
-      {template ? (
+      {source !== undefined ? (
         <>
-          <TemplateSource template={template} lineSeverities={severityByLine(diagnostics)} highlight={highlight} />
+          <Suspense fallback={<TemplateSource template={source} lineSeverities={severityByLine(diagnostics)} highlight={highlight} />}>
+            <TemplateEditor source={source} format={format} diagnostics={diagnostics} highlight={highlight} onChange={onChange} />
+          </Suspense>
           <ProblemList diagnostics={diagnostics} />
         </>
       ) : (
@@ -63,7 +70,7 @@ export function EditorArea({ template, diagnostics, highlight }: EditorAreaProps
   );
 }
 
-/** Read-only view with line numbers. CodeMirror replaces it in M1 (D16). */
+/** Read-only view with line numbers, shown while the CodeMirror chunk loads. */
 function TemplateSource({
   template,
   lineSeverities,
@@ -75,7 +82,7 @@ function TemplateSource({
 }) {
   const lines = template.split('\n');
   const sourceRef = useRef<HTMLPreElement>(null);
-  const highlighted = spanOf(highlight);
+  const highlighted = optionalLineSpan(highlight);
   const firstHighlightedLine = highlighted?.first;
 
   // Scrolling is outside React's rendering, so it's an effect: bring new highlighted lines into view.
@@ -178,12 +185,4 @@ function isWithin(lineNumber: number, span: LineSpan | undefined): boolean {
   }
 
   return lineNumber >= span.first && lineNumber <= span.last;
-}
-
-function spanOf(range: SourceRange | undefined): LineSpan | undefined {
-  if (!range) {
-    return;
-  }
-
-  return lineSpan(range);
 }

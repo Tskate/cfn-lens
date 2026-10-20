@@ -13,6 +13,7 @@ import { DetailsArea } from '@/features/details/DetailsArea';
 import { DiagramArea } from '@/features/diagram/DiagramArea';
 import { countFolded } from '@/features/diagram/countFolded';
 import { EditorArea } from '@/features/editor/EditorArea';
+import { useDebouncedValue } from '@/features/editor/useDebouncedValue';
 import { samples } from '@/features/samples/samples';
 import { readTemplateHandoff } from '@/features/template-input/templateHandoff';
 import { WorkspaceHeader } from './WorkspaceHeader';
@@ -22,17 +23,30 @@ import { WorkspaceLayout } from './WorkspaceLayout';
 // line link in the panel pointed somewhere else (e.g. a resource folded into it).
 type Selection = { id: string; range?: SourceRange };
 
-/** Editor | diagram | details, served at `/app`. */
+// Long enough to skip the work while someone types, short enough to feel live.
+const PARSE_DELAY_MS = 300;
+
+/** Editor | diagram | details, served at `/app`. Works out which template is open. */
 export function WorkspacePage() {
   const [searchParams] = useSearchParams();
   const location = useLocation();
+
+  const sample = samples.find((candidate) => candidate.id === searchParams.get('sample'));
+  const initialSource = sample?.template ?? readTemplateHandoff(location.state);
+  const documentName = sample?.title ?? (initialSource ? 'Pasted template' : 'Untitled template');
+
+  // Another sample or paste is another document: the key starts its editing state afresh.
+  return <Workspace key={sample?.id ?? location.key} documentName={documentName} initialSource={initialSource} />;
+}
+
+function Workspace({ documentName, initialSource }: { documentName: string; initialSource: string | undefined }) {
+  const [source, setSource] = useState(initialSource);
   const [showAllResources, setShowAllResources] = useState(false);
   const [selection, setSelection] = useState<Selection>();
 
-  const sample = samples.find((candidate) => candidate.id === searchParams.get('sample'));
-  const pastedTemplate = sample?.template ?? readTemplateHandoff(location.state);
-  const documentName = sample?.title ?? (pastedTemplate ? 'Pasted template' : 'Untitled template');
-  const parseResult = pastedTemplate === undefined ? undefined : parseTemplate(pastedTemplate);
+  // Parsing and the diagram follow the text once typing pauses; the editor itself stays instant.
+  const parsedSource = useDebouncedValue(source, PARSE_DELAY_MS);
+  const parseResult = parsedSource === undefined ? undefined : parseTemplate(parsedSource);
   const diagram = toDiagram(parseResult, showAllResources);
   // A resource can disappear from the diagram, e.g. folded again when "Show all resources" turns off
   const selectedNode = diagram?.nodes.find((node) => node.id === selection?.id);
@@ -53,7 +67,15 @@ export function WorkspacePage() {
             onShowAllResourcesChange={setShowAllResources}
           />
         }
-        editor={<EditorArea template={pastedTemplate} diagnostics={parseResult?.diagnostics ?? []} highlight={highlight} />}
+        editor={
+          <EditorArea
+            source={source}
+            format={parseResult?.format}
+            diagnostics={parseResult?.diagnostics ?? []}
+            highlight={highlight}
+            onChange={setSource}
+          />
+        }
         diagram={<DiagramArea parseResult={parseResult} diagram={diagram} selectedId={selectedNode?.id} onSelect={select} />}
         details={
           <DetailsArea
