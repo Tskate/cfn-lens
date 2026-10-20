@@ -7,7 +7,11 @@ export type Plumbing = 'owned' | 'network';
 
 // attachedBy: the property naming what owned plumbing is attached to (a policy's Roles). Without it,
 // the plumbing belongs to whoever references it (a role belongs to the function using it).
-export type ResourceDescription = { name: string; icon: ResourceIcon; plumbing?: Plumbing; attachedBy?: string };
+// description: what the resource does, in plain English, written for this project (PLAN §3: not copied from AWS).
+export type ResourceDescription = { name: string; icon: ResourceIcon; plumbing?: Plumbing; attachedBy?: string; description?: string };
+
+const DOCS_BASE = 'https://docs.aws.amazon.com/AWSCloudFormation/latest/TemplateReference';
+const AWS_RESOURCE_TYPE = /^AWS::(\w+)::(\w+)$/;
 
 // M1 catalog (~15 types, PLAN §3). Names are sentence case, as people say them.
 const catalog: Readonly<Record<string, ResourceDescription>> = {
@@ -76,4 +80,17 @@ export function describeResourceType(type: string): ResourceDescription {
   }
 
   return { name: type.replace(/^AWS::/, '').replaceAll('::', ' '), icon: 'unknown' };
+}
+
+// AWS::EC2::Instance → …/aws-resource-ec2-instance.html. The site answers 200 with a generic page for
+// unknown names, so this pattern (checked against several types) is all there is to go on.
+export function docsUrlFor(type: string): string | undefined {
+  const match = AWS_RESOURCE_TYPE.exec(type);
+
+  if (!match) {
+    return;
+  }
+
+  const [, service = '', resource = ''] = match;
+  return `${DOCS_BASE}/aws-resource-${service.toLowerCase()}-${resource.toLowerCase()}.html`;
 }

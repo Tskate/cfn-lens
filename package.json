@@ -11,7 +11,8 @@
     "format:check": "prettier --check .",
     "typecheck": "tsc -p tsconfig.json && pnpm -r --if-present typecheck",
     "test": "pnpm -r --if-present test",
-    "build": "pnpm -r --if-present build"
+    "build": "pnpm -r --if-present build",
+    "dev": "pnpm -r --if-present dev"
   },
   "engines": {
     "node": ">=24"

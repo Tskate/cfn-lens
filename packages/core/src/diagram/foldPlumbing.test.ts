@@ -26,7 +26,7 @@ describe('folding plumbing', () => {
 
     expect(nodeIds(...resources)).toEqual(['Handler']);
     expect(folded(...resources).nodes[0]?.folded).toEqual([
-      { id: 'Role', type: 'AWS::IAM::Role', typeName: 'IAM role', range: expect.anything() },
+      { id: 'Role', type: 'AWS::IAM::Role', typeName: 'IAM role', icon: 'shield', range: expect.anything() },
     ]);
   });
 

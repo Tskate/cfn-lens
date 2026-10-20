@@ -1,6 +1,6 @@
 import type { DiagramEdge, DiagramModel, DiagramNode, FoldedResource, ReferenceKind, Resource, Template, TemplateValue } from '../types';
 import { findReferences } from '../utils/findReferences';
-import { describeResourceType } from './catalog';
+import { describeResourceType, docsUrlFor } from './catalog';
 import { findContainment } from './findContainment';
 import { foldPlumbing, type Folding } from './foldPlumbing';
 
@@ -133,12 +133,14 @@ function attachmentValue(resource: Resource | undefined): TemplateValue | undefi
 }
 
 function toNode(resource: Resource, parentId: string | undefined, folded: readonly FoldedResource[]): DiagramNode {
-  const { name, icon } = describeResourceType(resource.type);
+  const { name, icon, description } = describeResourceType(resource.type);
   return {
     id: resource.name,
     type: resource.type,
     typeName: name,
     icon,
+    description,
+    docsUrl: docsUrlFor(resource.type),
     condition: resource.condition,
     range: resource.range,
     parentId,
@@ -147,7 +149,8 @@ function toNode(resource: Resource, parentId: string | undefined, folded: readon
 }
 
 function toFolded(resource: Resource): FoldedResource {
-  return { id: resource.name, type: resource.type, typeName: describeResourceType(resource.type).name, range: resource.range };
+  const { name, icon } = describeResourceType(resource.type);
+  return { id: resource.name, type: resource.type, typeName: name, icon, range: resource.range };
 }
 
 function outgoingReferences(resource: Resource): OutgoingReference[] {

@@ -1,13 +1,28 @@
-import type { Diagnostic, DiagnosticSeverity } from '@cfn-lens/core';
-import { useId } from 'react';
+import type { Diagnostic, DiagnosticSeverity, Format, SourceRange } from '@cfn-lens/core';
+import { lazy, Suspense, useEffect, useId, useRef } from 'react';
 import { cn } from 'cn';
 import { DiagnosticIcon } from '@/features/diagnostics/DiagnosticIcon';
 import { formatLocation, sortDiagnostics, summarizeDiagnostics, worstSeverity } from '@/features/diagnostics/diagnostics';
+import { optionalLineSpan, type LineSpan } from '@/features/source/lineSpan';
 
 interface EditorAreaProps {
-  template: string | undefined;
+  source: string | undefined;
+  format: Format | undefined;
   diagnostics: readonly Diagnostic[];
+  // The selected resource's lines (or a line link's), drawn in blue
+  highlight: SourceRange | undefined;
+  onChange: (source: string) => void;
 }
+
+// CodeMirror is a separate chunk (D30); until it arrives the read-only view stands in.
+const TemplateEditor = lazy(() => import('./TemplateEditor').then((module) => ({ default: module.TemplateEditor })));
+
+type LineClasses = { line: string; lineNumber: string };
+
+const highlightClasses: LineClasses = {
+  line: 'bg-[#eff4ff] shadow-[inset_2px_0_0_var(--color-blue-600)]',
+  lineNumber: 'text-blue-700',
+};
 
 // Full class names (not built from strings) so Tailwind can find them when scanning the source.
 const severityClasses: Record<DiagnosticSeverity, { summary: string; line: string; lineNumber: string; problemList: string }> = {
@@ -25,7 +40,7 @@ const severityClasses: Record<DiagnosticSeverity, { summary: string; line: strin
   },
 };
 
-export function EditorArea({ template, diagnostics }: EditorAreaProps) {
+export function EditorArea({ source, format, diagnostics, highlight, onChange }: EditorAreaProps) {
   const headingId = useId();
   const severity = worstSeverity(diagnostics);
   const classes = severity && severityClasses[severity];
@@ -41,9 +56,11 @@ export function EditorArea({ template, diagnostics }: EditorAreaProps) {
           {summarizeDiagnostics(diagnostics)}
         </span>
       </div>
-      {template ? (
+      {source !== undefined ? (
         <>
-          <TemplateSource template={template} lineSeverities={severityByLine(diagnostics)} />
+          <Suspense fallback={<TemplateSource template={source} lineSeverities={severityByLine(diagnostics)} highlight={highlight} />}>
+            <TemplateEditor source={source} format={format} diagnostics={diagnostics} highlight={highlight} onChange={onChange} />
+          </Suspense>
           <ProblemList diagnostics={diagnostics} />
         </>
       ) : (
@@ -53,24 +70,58 @@ export function EditorArea({ template, diagnostics }: EditorAreaProps) {
   );
 }
 
-/** Read-only view with line numbers. CodeMirror replaces it in M1 (D16). */
-function TemplateSource({ template, lineSeverities }: { template: string; lineSeverities: ReadonlyMap<number, DiagnosticSeverity> }) {
+/** Read-only view with line numbers, shown while the CodeMirror chunk loads. */
+function TemplateSource({
+  template,
+  lineSeverities,
+  highlight,
+}: {
+  template: string;
+  lineSeverities: ReadonlyMap<number, DiagnosticSeverity>;
+  highlight: SourceRange | undefined;
+}) {
   const lines = template.split('\n');
+  const sourceRef = useRef<HTMLPreElement>(null);
+  const highlighted = optionalLineSpan(highlight);
+  const firstHighlightedLine = highlighted?.first;
+
+  // Scrolling is outside React's rendering, so it's an effect: bring new highlighted lines into view.
+  useEffect(() => {
+    if (firstHighlightedLine === undefined) {
+      return;
+    }
+
+    sourceRef.current?.querySelector(`[data-line="${firstHighlightedLine}"]`)?.scrollIntoView({ block: 'nearest' });
+  }, [firstHighlightedLine]);
+
+  const classesFor = (lineNumber: number): LineClasses | undefined => {
+    if (isWithin(lineNumber, highlighted)) {
+      return highlightClasses;
+    }
+
+    const severity = lineSeverities.get(lineNumber);
+
+    if (!severity) {
+      return;
+    }
+
+    return severityClasses[severity];
+  };
 
   return (
     <pre
+      ref={sourceRef}
       tabIndex={0}
       aria-label="Template source"
       className="min-h-0 flex-1 overflow-auto py-2 font-mono text-[12.5px]/5 outline-none focus-visible:ring-3 focus-visible:ring-ring/50 focus-visible:ring-inset"
     >
       {lines.map((line, index) => {
         const lineNumber = index + 1;
-        const severity = lineSeverities.get(lineNumber);
-        const classes = severity && severityClasses[severity];
+        const classes = classesFor(lineNumber);
 
         return (
           // Lines have no identity besides their position, so the index is the right key here.
-          <span key={index} className={cn('flex', classes?.line)}>
+          <span key={index} data-line={lineNumber} className={cn('flex', classes?.line)}>
             <span aria-hidden="true" className={cn('w-11 flex-none pr-3.5 text-right text-neutral-400 select-none', classes?.lineNumber)}>
               {lineNumber}
             </span>
@@ -126,4 +177,12 @@ function severityByLine(diagnostics: readonly Diagnostic[]): Map<number, Diagnos
   }
 
   return lines;
+}
+
+function isWithin(lineNumber: number, span: LineSpan | undefined): boolean {
+  if (!span) {
+    return false;
+  }
+
+  return lineNumber >= span.first && lineNumber <= span.last;
 }

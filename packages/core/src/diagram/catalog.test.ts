@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { describeResourceType } from './catalog.ts';
+import { describeResourceType, docsUrlFor } from './catalog.ts';
 
 describe('describeResourceType', () => {
   it.each([
@@ -24,4 +24,23 @@ describe('describeResourceType', () => {
   ])('derives a name for %s', (type, name) => {
     expect(describeResourceType(type)).toEqual({ name, icon: 'unknown' });
   });
+});
+
+describe('docsUrlFor', () => {
+  it.each([
+    ['AWS::EC2::Instance', 'aws-resource-ec2-instance'],
+    ['AWS::ElasticLoadBalancingV2::LoadBalancer', 'aws-resource-elasticloadbalancingv2-loadbalancer'],
+    // Not in the catalog: the reference follows the same pattern for every AWS type
+    ['AWS::EC2::VPCEndpoint', 'aws-resource-ec2-vpcendpoint'],
+  ])('links %s to its reference page', (type, page) => {
+    expect(docsUrlFor(type)).toBe(`https://docs.aws.amazon.com/AWSCloudFormation/latest/TemplateReference/${page}.html`);
+  });
+
+  // Custom resources, registry extensions and modules have no page in the AWS reference
+  it.each(['Custom::DbSeeder', 'MyOrg::Service::Thing', 'MyOrg::Network::Vpc::MODULE', 'AWS::Serverless::Function::Extra'])(
+    'has no link for %s',
+    (type) => {
+      expect(docsUrlFor(type)).toBeUndefined();
+    },
+  );
 });

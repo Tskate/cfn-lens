@@ -12,7 +12,7 @@ export type ResourceNodeData = {
 export type ResourceFlowNode = Node<ResourceNodeData, 'resource'>;
 export type ContainerFlowNode = Node<{ group: DiagramGroup }, 'container'>;
 export type DiagramFlowNode = ResourceFlowNode | ContainerFlowNode;
-export type RoutedEdgeData = { points: XYPosition[] };
+export type RoutedEdgeData = { points: XYPosition[]; highlighted?: boolean };
 export type RoutedFlowEdge = Edge<RoutedEdgeData, 'routed'>;
 export type DiagramLayout = { nodes: DiagramFlowNode[]; edges: RoutedFlowEdge[] };
 
@@ -38,10 +38,18 @@ const layoutOptions: LayoutOptions = {
   'elk.layered.spacing.edgeNodeBetweenLayers': '24',
 };
 
-// The top padding leaves room for the label in the corner.
+// The top padding leaves room for the label in the corner; the minimum size keeps an empty box readable.
 const containerOptions: Record<DiagramGroup['kind'], LayoutOptions> = {
-  vpc: { 'elk.padding': '[top=48,left=24,bottom=24,right=24]' },
-  availabilityZone: { 'elk.padding': '[top=40,left=16,bottom=16,right=16]' },
+  vpc: {
+    'elk.padding': '[top=48,left=24,bottom=24,right=24]',
+    'elk.nodeSize.constraints': 'MINIMUM_SIZE',
+    'elk.nodeSize.minimum': '(280, 120)',
+  },
+  availabilityZone: {
+    'elk.padding': '[top=40,left=16,bottom=16,right=16]',
+    'elk.nodeSize.constraints': 'MINIMUM_SIZE',
+    'elk.nodeSize.minimum': '(232, 104)',
+  },
   subnet: {
     'elk.padding': '[top=44,left=16,bottom=20,right=16]',
     'elk.nodeSize.constraints': 'MINIMUM_SIZE',
@@ -103,6 +111,7 @@ async function layoutDiagram(model: DiagramModel): Promise<DiagramLayout> {
       source,
       target,
       zIndex: EDGE_Z_INDEX,
+      selectable: false,
       data: { points: routes.get(id) ?? [] },
       markerEnd: { type: MarkerType.ArrowClosed, width: 16, height: 16, color: 'var(--color-group-vpc)' },
     };
