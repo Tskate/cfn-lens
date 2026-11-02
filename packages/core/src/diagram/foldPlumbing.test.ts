@@ -89,6 +89,20 @@ describe('folding plumbing', () => {
     expect(edges(...resources)).toEqual(['Db → Web']);
   });
 
+  it('folds an HTTP API integration, routes and stage into their API', () => {
+    const resources = [
+      res('Api', 'AWS::ApiGatewayV2::Api', 'ProtocolType: HTTP'),
+      res('Integration', 'AWS::ApiGatewayV2::Integration', 'ApiId: !Ref Api', 'IntegrationUri: !GetAtt Handler.Arn'),
+      res('Route', 'AWS::ApiGatewayV2::Route', 'ApiId: !Ref Api', "Target: !Sub 'integrations/${Integration}'"),
+      res('Stage', 'AWS::ApiGatewayV2::Stage', 'ApiId: !Ref Api'),
+      fn('Handler'),
+    ];
+
+    expect(nodeIds(...resources)).toEqual(['Api', 'Handler']);
+    expect(foldedInto('Api', ...resources)).toEqual(['Integration', 'Route', 'Stage']);
+    expect(edges(...resources)).toEqual(['Api → Handler']);
+  });
+
   it('stops a chain at a shared link', () => {
     const resources = [
       res('Policy', 'AWS::IAM::Policy', 'Roles: [!Ref Role]'),

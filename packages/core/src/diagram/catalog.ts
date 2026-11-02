@@ -53,6 +53,9 @@ const catalog: Readonly<Record<string, ResourceDescription>> = {
     plumbing: 'owned',
     attachedBy: 'ListenerArn',
   },
+  'AWS::ApiGatewayV2::Integration': { name: 'API integration', icon: 'api', plumbing: 'owned', attachedBy: 'ApiId' },
+  'AWS::ApiGatewayV2::Route': { name: 'API route', icon: 'api', plumbing: 'owned', attachedBy: 'ApiId' },
+  'AWS::ApiGatewayV2::Stage': { name: 'API stage', icon: 'api', plumbing: 'owned', attachedBy: 'ApiId' },
   'AWS::EC2::EIP': { name: 'Elastic IP', icon: 'network', plumbing: 'owned', attachedBy: 'InstanceId' },
 
   'AWS::EC2::RouteTable': { name: 'Route table', icon: 'network', plumbing: 'network' },
