@@ -11,5 +11,7 @@
 
     "paths": { "@/*": ["./src/*"] }
   },
-  "include": ["src"]
+  "include": ["src"],
+  // Tests and their setup belong to the test program (tsconfig.test.json).
+  "exclude": ["src/**/*.test.ts", "src/**/*.test.tsx", "src/test"]
 }
