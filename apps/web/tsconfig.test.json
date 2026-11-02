@@ -1,0 +1,11 @@
+{
+  "extends": "./tsconfig.app.json",
+  "compilerOptions": {
+    "tsBuildInfoFile": "./node_modules/.tmp/tsconfig.test.tsbuildinfo",
+    // Separate program: Vitest and jsdom bring Node globals, which must not leak into app code.
+    "types": ["vite/client", "node", "@testing-library/jest-dom/vitest"]
+  },
+  "include": ["src/**/*.test.ts", "src/**/*.test.tsx", "src/test", "vitest.config.ts"],
+  // The app config excludes tests, and `exclude` is inherited
+  "exclude": []
+}

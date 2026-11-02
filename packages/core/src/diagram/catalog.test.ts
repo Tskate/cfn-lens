@@ -5,6 +5,7 @@ import { describeResourceType, docsUrlFor } from './catalog.ts';
 describe('describeResourceType', () => {
   it.each([
     ['AWS::EC2::Instance', 'EC2 instance', 'server'],
+    ['AWS::AutoScaling::AutoScalingGroup', 'Auto Scaling group', 'server'],
     ['AWS::ElasticLoadBalancingV2::LoadBalancer', 'Load balancer', 'loadBalancer'],
     ['AWS::EC2::NatGateway', 'NAT gateway', 'natGateway'],
     ['AWS::S3::Bucket', 'S3 bucket', 'bucket'],
