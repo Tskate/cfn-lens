@@ -46,6 +46,49 @@ describe('folding plumbing', () => {
     expect(foldedInto('Handler', ...resources)).toEqual(['Policy', 'Role']);
   });
 
+  it('folds a launch template and everything it uses into its Auto Scaling group', () => {
+    const resources = [
+      role('Role'),
+      res('Profile', 'AWS::IAM::InstanceProfile', 'Roles: [!Ref Role]'),
+      res('Sg', 'AWS::EC2::SecurityGroup', 'GroupDescription: web'),
+      res(
+        'Template',
+        'AWS::EC2::LaunchTemplate',
+        'LaunchTemplateData:',
+        '  IamInstanceProfile:',
+        '    Arn: !GetAtt Profile.Arn',
+        '  SecurityGroupIds: [!Ref Sg]',
+      ),
+      res('Servers', 'AWS::AutoScaling::AutoScalingGroup', 'LaunchTemplate:', '  LaunchTemplateId: !Ref Template'),
+    ];
+
+    expect(nodeIds(...resources)).toEqual(['Servers']);
+    expect(foldedInto('Servers', ...resources)).toEqual(['Role', 'Profile', 'Sg', 'Template']);
+  });
+
+  // A rule naming a group as its traffic source is about the traffic, not a use of that group
+  it.each([
+    ['inline in another group', [res('DbSg', 'AWS::EC2::SecurityGroup', 'SecurityGroupIngress:', '  - SourceSecurityGroupId: !Ref WebSg')]],
+    [
+      'in a separate rule',
+      [
+        res('DbSg', 'AWS::EC2::SecurityGroup', 'GroupDescription: db'),
+        res('DbRule', 'AWS::EC2::SecurityGroupIngress', 'GroupId: !Ref DbSg', 'SourceSecurityGroupId: !Ref WebSg'),
+      ],
+    ],
+  ])('folds a security group into its user when it is named %s', (_, dbSecurityGroup) => {
+    // The database side first: once DbSg folds into Db, Db would look like a second owner of WebSg
+    const resources = [
+      ...dbSecurityGroup,
+      res('Db', 'AWS::RDS::DBInstance', 'VPCSecurityGroups: [!Ref DbSg]'),
+      res('WebSg', 'AWS::EC2::SecurityGroup', 'GroupDescription: web'),
+      res('Web', 'AWS::EC2::Instance', 'SecurityGroupIds: [!Ref WebSg]'),
+    ];
+
+    expect(nodeIds(...resources)).toEqual(['Db', 'Web']);
+    expect(edges(...resources)).toEqual(['Db → Web']);
+  });
+
   it('stops a chain at a shared link', () => {
     const resources = [
       res('Policy', 'AWS::IAM::Policy', 'Roles: [!Ref Role]'),
