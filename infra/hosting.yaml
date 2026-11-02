@@ -1,0 +1,261 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: 'cfn-lens hosting: private S3 bucket behind CloudFront, plus GitHub Actions deploy roles.'
+
+Parameters:
+  GitHubRepository:
+    Type: String
+    Default: Tskate/cfn-lens
+    Description: owner/repo allowed to deploy
+    AllowedPattern: '[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+'
+  DeployBranch:
+    Type: String
+    Default: main
+    Description: Only workflows running on this branch can assume the deploy roles
+  ExistingGitHubOidcProviderArn:
+    Type: String
+    Default: ''
+    Description: ARN of the account's GitHub OIDC provider if it already exists; leave empty to create one
+
+Conditions:
+  CreateGitHubOidcProvider: !Equals [!Ref ExistingGitHubOidcProviderArn, '']
+
+Resources:
+  # ---------- Site files: private, versioned, kept if the stack goes away ----------
+  SiteBucket:
+    Type: AWS::S3::Bucket
+    DeletionPolicy: Retain
+    UpdateReplacePolicy: Retain
+    Properties:
+      PublicAccessBlockConfiguration:
+        BlockPublicAcls: true
+        BlockPublicPolicy: true
+        IgnorePublicAcls: true
+        RestrictPublicBuckets: true
+      OwnershipControls:
+        Rules:
+          - ObjectOwnership: BucketOwnerEnforced
+      BucketEncryption:
+        ServerSideEncryptionConfiguration:
+          - ServerSideEncryptionByDefault:
+              SSEAlgorithm: AES256
+      VersioningConfiguration:
+        Status: Enabled
+      LifecycleConfiguration:
+        Rules:
+          - Id: expire-old-versions
+            Status: Enabled
+            NoncurrentVersionExpiration:
+              NoncurrentDays: 30
+            AbortIncompleteMultipartUpload:
+              DaysAfterInitiation: 7
+
+  # ---------- CloudFront: the only way into the bucket ----------
+  SiteOriginAccessControl:
+    Type: AWS::CloudFront::OriginAccessControl
+    Properties:
+      OriginAccessControlConfig:
+        Name: !Sub '${AWS::StackName}-site'
+        OriginAccessControlOriginType: s3
+        SigningBehavior: always
+        SigningProtocol: sigv4
+
+  SiteDistribution:
+    Type: AWS::CloudFront::Distribution
+    Properties:
+      DistributionConfig:
+        Enabled: true
+        Comment: cfn-lens web app
+        HttpVersion: http2and3
+        PriceClass: PriceClass_100
+        DefaultRootObject: index.html
+        Origins:
+          - Id: SiteBucket
+            DomainName: !GetAtt SiteBucket.RegionalDomainName
+            OriginAccessControlId: !GetAtt SiteOriginAccessControl.Id
+            S3OriginConfig:
+              OriginAccessIdentity: ''
+        DefaultCacheBehavior:
+          TargetOriginId: SiteBucket
+          ViewerProtocolPolicy: redirect-to-https
+          Compress: true
+          # Managed policies: CachingOptimized and SecurityHeadersPolicy
+          CachePolicyId: 658327ea-f89d-4fab-a63d-7e88639e58f6
+          ResponseHeadersPolicyId: 67f7725c-6f97-4210-82d7-5512b31e9d03
+        # S3 can't resolve app pages like /app, so they fall back to index.html and React Router takes over.
+        # Without s3:ListBucket a missing key is a 403, not a 404, so both are covered.
+        CustomErrorResponses:
+          - ErrorCode: 403
+            ResponseCode: 200
+            ResponsePagePath: /index.html
+          - ErrorCode: 404
+            ResponseCode: 200
+            ResponsePagePath: /index.html
+
+  SiteBucketPolicy:
+    Type: AWS::S3::BucketPolicy
+    Properties:
+      Bucket: !Ref SiteBucket
+      PolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Sid: AllowCloudFrontRead
+            Effect: Allow
+            Principal:
+              Service: cloudfront.amazonaws.com
+            Action: s3:GetObject
+            Resource: !Sub '${SiteBucket.Arn}/*'
+            Condition:
+              StringEquals:
+                AWS:SourceArn: !Sub 'arn:${AWS::Partition}:cloudfront::${AWS::AccountId}:distribution/${SiteDistribution}'
+
+  # ---------- GitHub Actions: short-lived AWS credentials through OIDC, no stored keys ----------
+  GitHubOidcProvider:
+    Type: AWS::IAM::OIDCProvider
+    Condition: CreateGitHubOidcProvider
+    Properties:
+      Url: https://token.actions.githubusercontent.com
+      ClientIdList:
+        - sts.amazonaws.com
+      # AWS validates GitHub's certificate itself now; IAM still accepts a thumbprint list for older tooling
+      ThumbprintList:
+        - 6938fd4d98bab03faadb97b34396831e3780aea1
+        - 1c58a3a8518e8759bf075b76b750d4f2df264fcd
+
+  # Uploads the built site and clears the CloudFront cache. Can't touch the stack or IAM.
+  AppDeployRole:
+    Type: AWS::IAM::Role
+    Properties:
+      Description: GitHub Actions uploads the web app to the site bucket
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Federated: !If [CreateGitHubOidcProvider, !Ref GitHubOidcProvider, !Ref ExistingGitHubOidcProviderArn]
+            Action: sts:AssumeRoleWithWebIdentity
+            Condition:
+              StringEquals:
+                token.actions.githubusercontent.com:aud: sts.amazonaws.com
+                token.actions.githubusercontent.com:sub: !Sub 'repo:${GitHubRepository}:ref:refs/heads/${DeployBranch}'
+      Policies:
+        - PolicyName: deploy-site
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Sid: ReadStackOutputs
+                Effect: Allow
+                Action: cloudformation:DescribeStacks
+                Resource: !Ref AWS::StackId
+              - Sid: ListSiteBucket
+                Effect: Allow
+                Action: s3:ListBucket
+                Resource: !GetAtt SiteBucket.Arn
+              - Sid: WriteSiteFiles
+                Effect: Allow
+                Action:
+                  - s3:GetObject
+                  - s3:PutObject
+                  - s3:DeleteObject
+                Resource: !Sub '${SiteBucket.Arn}/*'
+              - Sid: InvalidateCache
+                Effect: Allow
+                Action: cloudfront:CreateInvalidation
+                Resource: !Sub 'arn:${AWS::Partition}:cloudfront::${AWS::AccountId}:distribution/${SiteDistribution}'
+
+  # Runs change sets on this stack only. The resource changes themselves happen as CloudFormationExecutionRole.
+  InfraDeployRole:
+    Type: AWS::IAM::Role
+    Properties:
+      Description: GitHub Actions deploys this stack through change sets
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Federated: !If [CreateGitHubOidcProvider, !Ref GitHubOidcProvider, !Ref ExistingGitHubOidcProviderArn]
+            Action: sts:AssumeRoleWithWebIdentity
+            Condition:
+              StringEquals:
+                token.actions.githubusercontent.com:aud: sts.amazonaws.com
+                token.actions.githubusercontent.com:sub: !Sub 'repo:${GitHubRepository}:ref:refs/heads/${DeployBranch}'
+      Policies:
+        - PolicyName: deploy-stack
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Sid: ChangeSetsOnThisStack
+                Effect: Allow
+                Action:
+                  - cloudformation:CreateChangeSet
+                  - cloudformation:DescribeChangeSet
+                  - cloudformation:ExecuteChangeSet
+                  - cloudformation:DeleteChangeSet
+                  - cloudformation:DescribeStacks
+                  - cloudformation:DescribeStackEvents
+                  - cloudformation:GetTemplateSummary
+                Resource: !Sub 'arn:${AWS::Partition}:cloudformation:${AWS::Region}:${AWS::AccountId}:stack/${AWS::StackName}/*'
+              - Sid: ValidateTemplates
+                Effect: Allow
+                Action: cloudformation:ValidateTemplate
+                Resource: '*'
+              - Sid: HandStackChangesToExecutionRole
+                Effect: Allow
+                Action: iam:PassRole
+                Resource: !GetAtt CloudFormationExecutionRole.Arn
+                Condition:
+                  StringEquals:
+                    iam:PassedToService: cloudformation.amazonaws.com
+
+  # What CloudFormation itself acts as when InfraDeployRole runs a change set: only this stack's resources.
+  CloudFormationExecutionRole:
+    Type: AWS::IAM::Role
+    Properties:
+      Description: CloudFormation manages the cfn-lens hosting resources
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: cloudformation.amazonaws.com
+            Action: sts:AssumeRole
+      Policies:
+        - PolicyName: manage-hosting
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Sid: SiteBucket
+                Effect: Allow
+                Action: s3:*
+                Resource:
+                  - !Sub 'arn:${AWS::Partition}:s3:::${AWS::StackName}-sitebucket-*'
+                  - !Sub 'arn:${AWS::Partition}:s3:::${AWS::StackName}-sitebucket-*/*'
+              - Sid: CloudFront
+                Effect: Allow
+                Action: cloudfront:*
+                Resource: '*'
+              - Sid: StackRolesAndOidcProvider
+                Effect: Allow
+                Action: iam:*
+                Resource:
+                  - !Sub 'arn:${AWS::Partition}:iam::${AWS::AccountId}:role/${AWS::StackName}-*'
+                  - !Sub 'arn:${AWS::Partition}:iam::${AWS::AccountId}:oidc-provider/token.actions.githubusercontent.com'
+
+Outputs:
+  SiteUrl:
+    Description: The deployed web app
+    Value: !Sub 'https://${SiteDistribution.DomainName}'
+  SiteBucketName:
+    Description: Read by the deploy workflow to upload the build
+    Value: !Ref SiteBucket
+  DistributionId:
+    Description: Read by the deploy workflow to invalidate index.html
+    Value: !Ref SiteDistribution
+  AppDeployRoleArn:
+    Description: GitHub variable AWS_APP_DEPLOY_ROLE_ARN
+    Value: !GetAtt AppDeployRole.Arn
+  InfraDeployRoleArn:
+    Description: GitHub variable AWS_INFRA_DEPLOY_ROLE_ARN
+    Value: !GetAtt InfraDeployRole.Arn
+  CloudFormationExecutionRoleArn:
+    Description: GitHub variable AWS_CFN_EXECUTION_ROLE_ARN
+    Value: !GetAtt CloudFormationExecutionRole.Arn
