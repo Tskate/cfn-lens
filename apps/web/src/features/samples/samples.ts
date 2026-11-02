@@ -1,5 +1,5 @@
 import type { ServiceIconName } from '@/components/ServiceIcon';
-import { serverlessApi, staticWebsite, webAppWithVpc } from './templates';
+import { queueWorker, serverlessApi, staticWebsite, webAppWithVpc } from './templates';
 
 export interface Sample {
   id: string;
@@ -36,6 +36,6 @@ export const samples: Sample[] = [
     title: 'Queue worker',
     description: 'An SQS queue feeding a Lambda function, with a dead-letter queue for failures.',
     icons: ['queue', 'function'],
-    template: '',
+    template: queueWorker,
   },
 ];

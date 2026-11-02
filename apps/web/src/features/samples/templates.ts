@@ -721,11 +721,114 @@ Outputs:
     Value: !Ref CloudFrontDistribution
 `;
 
-export const queueWorker = `
-AWSTemplateFormatVersion: "2010-09-09"
-Description: "An SQS queue feeding a Lambda function, with a dead-letter queue for failures."
+export const queueWorker = `AWSTemplateFormatVersion: '2010-09-09'
+Description: 'An SQS queue feeding a Lambda function, with a dead-letter queue for failures.'
 
 Resources:
-    SQSQueue:
-        Type: AWS::SQS::Queue
+  # ---------- Queues: jobs, and where jobs go after failing 3 times ----------
+  JobsDeadLetterQueue:
+    Type: AWS::SQS::Queue
+    Properties:
+      MessageRetentionPeriod: 1209600
+
+  JobsQueue:
+    Type: AWS::SQS::Queue
+    Properties:
+      VisibilityTimeout: 180
+      RedrivePolicy:
+        deadLetterTargetArn: !GetAtt JobsDeadLetterQueue.Arn
+        maxReceiveCount: 3
+
+  # ---------- Worker: role → log group → Lambda ----------
+  JobsWorkerLogGroup:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      RetentionInDays: 14
+
+  JobsWorkerRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: lambda.amazonaws.com
+            Action: sts:AssumeRole
+      Policies:
+        - PolicyName: write-logs
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: Allow
+                Action:
+                  - logs:CreateLogStream
+                  - logs:PutLogEvents
+                Resource: !GetAtt JobsWorkerLogGroup.Arn
+        - PolicyName: consume-jobs
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: Allow
+                Action:
+                  - sqs:ReceiveMessage
+                  - sqs:DeleteMessage
+                  - sqs:GetQueueAttributes
+                Resource: !GetAtt JobsQueue.Arn
+
+  JobsWorker:
+    Type: AWS::Lambda::Function
+    Properties:
+      Runtime: python3.13
+      Architectures:
+        - arm64
+      Handler: index.handler
+      MemorySize: 128
+      Timeout: 30
+      Role: !GetAtt JobsWorkerRole.Arn
+      LoggingConfig:
+        LogGroup: !Ref JobsWorkerLogGroup
+      Code:
+        ZipFile: |
+          import json
+          import logging
+
+          logger = logging.getLogger()
+          logger.setLevel(logging.INFO)
+
+
+          def handler(event, context):
+              failures = []
+
+              for record in event['Records']:
+                  try:
+                      job = json.loads(record['body'])
+                      logger.info('Processing job %s', job.get('id', record['messageId']))
+                      # The real work goes here: send an email, resize an image, call an API
+                  except Exception:
+                      logger.exception('Job %s failed', record['messageId'])
+                      failures.append({'itemIdentifier': record['messageId']})
+
+              return {'batchItemFailures': failures}
+
+  # ---------- Wiring: Lambda polls the queue and invokes the worker with batches ----------
+  JobsQueueEventSource:
+    Type: AWS::Lambda::EventSourceMapping
+    Properties:
+      EventSourceArn: !GetAtt JobsQueue.Arn
+      FunctionName: !Ref JobsWorker
+      BatchSize: 10
+      MaximumBatchingWindowInSeconds: 5
+      FunctionResponseTypes:
+        - ReportBatchItemFailures
+      ScalingConfig:
+        MaximumConcurrency: 5
+
+Outputs:
+  JobsQueueUrl:
+    Description: "Try: aws sqs send-message --queue-url $URL --message-body '{\\"id\\":\\"job-1\\"}'"
+    Value: !Ref JobsQueue
+  DeadLetterQueueUrl:
+    Description: Jobs that failed 3 times wait here for a human
+    Value: !Ref JobsDeadLetterQueue
 `;
