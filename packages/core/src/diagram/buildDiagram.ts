@@ -11,6 +11,7 @@ type OutgoingReference = { target: string; via: ReferenceKind };
 type MutableEdge = { source: string; target: string; via: ReferenceKind[] };
 
 const NO_FOLDING: Folding = { ownerOf: new Map(), absorbed: new Set() };
+const SECURITY_GROUP_RULE_TYPES = new Set(['AWS::EC2::SecurityGroup', 'AWS::EC2::SecurityGroupIngress', 'AWS::EC2::SecurityGroupEgress']);
 
 export function buildDiagram(template: Template, options: BuildDiagramOptions = {}): DiagramModel {
   const { groups, parentOf } = findContainment(template);
@@ -75,15 +76,22 @@ function foldOrKeep(
     return NO_FOLDING;
   }
 
+  const byName = new Map(resources.map((resource) => [resource.name, resource]));
   const referrers = new Map<string, string[]>();
 
   for (const [name, outgoing] of references) {
+    // A security group rule names other groups as traffic peers, which doesn't make it their owner
+    const isSecurityGroupRule = SECURITY_GROUP_RULE_TYPES.has(byName.get(name)?.type ?? '');
+
+    if (isSecurityGroupRule) {
+      continue;
+    }
+
     for (const { target } of outgoing) {
       referrers.set(target, [...(referrers.get(target) ?? []), name]);
     }
   }
 
-  const byName = new Map(resources.map((resource) => [resource.name, resource]));
   const plumbingOf = (id: string) => describeResourceType(byName.get(id)?.type ?? '').plumbing;
 
   // What the plumbing is attached to, else whoever uses it. A role's own references are what it

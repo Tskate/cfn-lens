@@ -46,6 +46,83 @@ describe('folding plumbing', () => {
     expect(foldedInto('Handler', ...resources)).toEqual(['Policy', 'Role']);
   });
 
+  it('folds a launch template and everything it uses into its Auto Scaling group', () => {
+    const resources = [
+      role('Role'),
+      res('Profile', 'AWS::IAM::InstanceProfile', 'Roles: [!Ref Role]'),
+      res('Sg', 'AWS::EC2::SecurityGroup', 'GroupDescription: web'),
+      res(
+        'Template',
+        'AWS::EC2::LaunchTemplate',
+        'LaunchTemplateData:',
+        '  IamInstanceProfile:',
+        '    Arn: !GetAtt Profile.Arn',
+        '  SecurityGroupIds: [!Ref Sg]',
+      ),
+      res('Servers', 'AWS::AutoScaling::AutoScalingGroup', 'LaunchTemplate:', '  LaunchTemplateId: !Ref Template'),
+    ];
+
+    expect(nodeIds(...resources)).toEqual(['Servers']);
+    expect(foldedInto('Servers', ...resources)).toEqual(['Role', 'Profile', 'Sg', 'Template']);
+  });
+
+  // A rule naming a group as its traffic source is about the traffic, not a use of that group
+  it.each([
+    ['inline in another group', [res('DbSg', 'AWS::EC2::SecurityGroup', 'SecurityGroupIngress:', '  - SourceSecurityGroupId: !Ref WebSg')]],
+    [
+      'in a separate rule',
+      [
+        res('DbSg', 'AWS::EC2::SecurityGroup', 'GroupDescription: db'),
+        res('DbRule', 'AWS::EC2::SecurityGroupIngress', 'GroupId: !Ref DbSg', 'SourceSecurityGroupId: !Ref WebSg'),
+      ],
+    ],
+  ])('folds a security group into its user when it is named %s', (_, dbSecurityGroup) => {
+    // The database side first: once DbSg folds into Db, Db would look like a second owner of WebSg
+    const resources = [
+      ...dbSecurityGroup,
+      res('Db', 'AWS::RDS::DBInstance', 'VPCSecurityGroups: [!Ref DbSg]'),
+      res('WebSg', 'AWS::EC2::SecurityGroup', 'GroupDescription: web'),
+      res('Web', 'AWS::EC2::Instance', 'SecurityGroupIds: [!Ref WebSg]'),
+    ];
+
+    expect(nodeIds(...resources)).toEqual(['Db', 'Web']);
+    expect(edges(...resources)).toEqual(['Db → Web']);
+  });
+
+  it('folds an HTTP API integration, routes and stage into their API', () => {
+    const resources = [
+      res('Api', 'AWS::ApiGatewayV2::Api', 'ProtocolType: HTTP'),
+      res('Integration', 'AWS::ApiGatewayV2::Integration', 'ApiId: !Ref Api', 'IntegrationUri: !GetAtt Handler.Arn'),
+      res('Route', 'AWS::ApiGatewayV2::Route', 'ApiId: !Ref Api', "Target: !Sub 'integrations/${Integration}'"),
+      res('Stage', 'AWS::ApiGatewayV2::Stage', 'ApiId: !Ref Api'),
+      fn('Handler'),
+    ];
+
+    expect(nodeIds(...resources)).toEqual(['Api', 'Handler']);
+    expect(foldedInto('Api', ...resources)).toEqual(['Integration', 'Route', 'Stage']);
+    expect(edges(...resources)).toEqual(['Api → Handler']);
+  });
+
+  it('folds an event source mapping into the function it invokes, keeping the link to its source', () => {
+    const resources = [
+      res('Queue', 'AWS::SQS::Queue', 'VisibilityTimeout: 180'),
+      fn('Worker'),
+      res('Trigger', 'AWS::Lambda::EventSourceMapping', 'EventSourceArn: !GetAtt Queue.Arn', 'FunctionName: !Ref Worker'),
+    ];
+
+    expect(nodeIds(...resources)).toEqual(['Queue', 'Worker']);
+    expect(edges(...resources)).toEqual(['Worker → Queue']);
+  });
+
+  it('folds an origin access control into its distribution', () => {
+    const resources = [
+      res('Oac', 'AWS::CloudFront::OriginAccessControl', 'OriginAccessControlConfig:', '  Name: site'),
+      res('Cdn', 'AWS::CloudFront::Distribution', 'DistributionConfig:', '  Origins:', '    - OriginAccessControlId: !GetAtt Oac.Id'),
+    ];
+
+    expect(nodeIds(...resources)).toEqual(['Cdn']);
+  });
+
   it('stops a chain at a shared link', () => {
     const resources = [
       res('Policy', 'AWS::IAM::Policy', 'Roles: [!Ref Role]'),

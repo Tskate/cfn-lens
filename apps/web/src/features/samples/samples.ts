@@ -1,5 +1,5 @@
 import type { ServiceIconName } from '@/components/ServiceIcon';
-import { serverlessApi, webAppWithVpc } from './templates';
+import { queueWorker, serverlessApi, staticWebsite, webAppWithVpc } from './templates';
 
 export interface Sample {
   id: string;
@@ -29,13 +29,13 @@ export const samples: Sample[] = [
     title: 'Static website',
     description: 'A private S3 bucket served through CloudFront with origin access control.',
     icons: ['cdn', 'bucket'],
-    template: '',
+    template: staticWebsite,
   },
   {
     id: 'queue-worker',
     title: 'Queue worker',
     description: 'An SQS queue feeding a Lambda function, with a dead-letter queue for failures.',
     icons: ['queue', 'function'],
-    template: '',
+    template: queueWorker,
   },
 ];

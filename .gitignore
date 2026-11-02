@@ -144,3 +144,6 @@ vite.config.ts.timestamp-*
 
 # Private planning notes
 .internal/
+
+# Local Machine files
+.DS_Store
