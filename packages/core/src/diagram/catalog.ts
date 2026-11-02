@@ -53,6 +53,8 @@ const catalog: Readonly<Record<string, ResourceDescription>> = {
     plumbing: 'owned',
     attachedBy: 'ListenerArn',
   },
+  'AWS::Lambda::EventSourceMapping': { name: 'Event source mapping', icon: 'function', plumbing: 'owned', attachedBy: 'FunctionName' },
+  'AWS::CloudFront::OriginAccessControl': { name: 'Origin access control', icon: 'cdn', plumbing: 'owned' },
   'AWS::ApiGatewayV2::Integration': { name: 'API integration', icon: 'api', plumbing: 'owned', attachedBy: 'ApiId' },
   'AWS::ApiGatewayV2::Route': { name: 'API route', icon: 'api', plumbing: 'owned', attachedBy: 'ApiId' },
   'AWS::ApiGatewayV2::Stage': { name: 'API stage', icon: 'api', plumbing: 'owned', attachedBy: 'ApiId' },

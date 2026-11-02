@@ -103,6 +103,26 @@ describe('folding plumbing', () => {
     expect(edges(...resources)).toEqual(['Api → Handler']);
   });
 
+  it('folds an event source mapping into the function it invokes, keeping the link to its source', () => {
+    const resources = [
+      res('Queue', 'AWS::SQS::Queue', 'VisibilityTimeout: 180'),
+      fn('Worker'),
+      res('Trigger', 'AWS::Lambda::EventSourceMapping', 'EventSourceArn: !GetAtt Queue.Arn', 'FunctionName: !Ref Worker'),
+    ];
+
+    expect(nodeIds(...resources)).toEqual(['Queue', 'Worker']);
+    expect(edges(...resources)).toEqual(['Worker → Queue']);
+  });
+
+  it('folds an origin access control into its distribution', () => {
+    const resources = [
+      res('Oac', 'AWS::CloudFront::OriginAccessControl', 'OriginAccessControlConfig:', '  Name: site'),
+      res('Cdn', 'AWS::CloudFront::Distribution', 'DistributionConfig:', '  Origins:', '    - OriginAccessControlId: !GetAtt Oac.Id'),
+    ];
+
+    expect(nodeIds(...resources)).toEqual(['Cdn']);
+  });
+
   it('stops a chain at a shared link', () => {
     const resources = [
       res('Policy', 'AWS::IAM::Policy', 'Roles: [!Ref Role]'),
