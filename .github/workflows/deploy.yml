@@ -1,0 +1,95 @@
+name: Deploy
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+# One deploy at a time, and never cancel one halfway through a stack update
+concurrency:
+  group: deploy
+  cancel-in-progress: false
+
+env:
+  AWS_REGION: us-east-1
+  STACK_NAME: cfn-lens-hosting
+
+jobs:
+  test:
+    uses: ./.github/workflows/test.yml
+
+  infra:
+    name: Deploy infra/hosting.yaml
+    needs: test
+    # Skipped until the stack is bootstrapped and its role ARNs are saved as repository variables
+    if: vars.AWS_INFRA_DEPLOY_ROLE_ARN != ''
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      id-token: write
+    steps:
+      - uses: actions/checkout@v5
+      - uses: aws-actions/configure-aws-credentials@v5
+        with:
+          role-to-assume: ${{ vars.AWS_INFRA_DEPLOY_ROLE_ARN }}
+          aws-region: ${{ env.AWS_REGION }}
+      - name: Create and execute a change set
+        env:
+          EXECUTION_ROLE_ARN: ${{ vars.AWS_CFN_EXECUTION_ROLE_ARN }}
+        run: |
+          aws cloudformation deploy \
+            --stack-name "$STACK_NAME" \
+            --template-file infra/hosting.yaml \
+            --role-arn "$EXECUTION_ROLE_ARN" \
+            --capabilities CAPABILITY_IAM \
+            --no-fail-on-empty-changeset
+
+  app:
+    name: Deploy the web app
+    needs: [test, infra]
+    if: vars.AWS_APP_DEPLOY_ROLE_ARN != ''
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      id-token: write
+    steps:
+      - name: Get the build that passed the tests
+        uses: actions/download-artifact@v4
+        with:
+          name: web-dist
+          path: dist
+      - uses: aws-actions/configure-aws-credentials@v5
+        with:
+          role-to-assume: ${{ vars.AWS_APP_DEPLOY_ROLE_ARN }}
+          aws-region: ${{ env.AWS_REGION }}
+      - name: Read the stack outputs
+        id: stack
+        run: |
+          output() {
+            aws cloudformation describe-stacks --stack-name "$STACK_NAME" \
+              --query "Stacks[0].Outputs[?OutputKey=='$1'].OutputValue" --output text
+          }
+          echo "bucket=$(output SiteBucketName)" >> "$GITHUB_OUTPUT"
+          echo "distribution=$(output DistributionId)" >> "$GITHUB_OUTPUT"
+      # Hashed file names change with every build, so they can be cached forever.
+      # Old ones stay, so tabs opened before this deploy can still load their chunks.
+      - name: Upload assets
+        env:
+          BUCKET: ${{ steps.stack.outputs.bucket }}
+        run: aws s3 sync dist/assets "s3://$BUCKET/assets" --cache-control "public, max-age=31536000, immutable"
+      - name: Upload the other public files
+        env:
+          BUCKET: ${{ steps.stack.outputs.bucket }}
+        run: aws s3 sync dist "s3://$BUCKET" --exclude "assets/*" --exclude index.html --delete --cache-control "public, max-age=3600"
+      # Last, so it never points at assets that aren't uploaded yet
+      - name: Upload index.html
+        env:
+          BUCKET: ${{ steps.stack.outputs.bucket }}
+        run: aws s3 cp dist/index.html "s3://$BUCKET/index.html" --cache-control "no-cache"
+      - name: Drop the cached index.html
+        env:
+          DISTRIBUTION_ID: ${{ steps.stack.outputs.distribution }}
+        run: aws cloudfront create-invalidation --distribution-id "$DISTRIBUTION_ID" --paths /index.html
