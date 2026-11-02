@@ -472,13 +472,173 @@ Outputs:
     Value: !GetAtt Database.MasterUserSecret.SecretArn
 `;
 
-export const serverlessApi = `
-AWSTemplateFormatVersion: "2010-09-09"
-Description: "API Gateway calling a Lambda function that reads and writes a DynamoDB table."
+export const serverlessApi = `AWSTemplateFormatVersion: '2010-09-09'
+Description: 'API Gateway calling a Lambda function that reads and writes a DynamoDB table.'
 
-Resources: 
-    ApiGatewayApi:
-        Type: AWS::ApiGateway::RestApi
+Resources:
+  # ---------- Data: one table, keyed by item id ----------
+  ItemsTable:
+    Type: AWS::DynamoDB::Table
+    DeletionPolicy: Retain
+    UpdateReplacePolicy: Retain
+    Properties:
+      BillingMode: PAY_PER_REQUEST
+      AttributeDefinitions:
+        - AttributeName: id
+          AttributeType: S
+      KeySchema:
+        - AttributeName: id
+          KeyType: HASH
+      PointInTimeRecoverySpecification:
+        PointInTimeRecoveryEnabled: true
+
+  # ---------- Function: role → log group → Lambda ----------
+  ItemsFunctionLogGroup:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      RetentionInDays: 14
+
+  ItemsFunctionRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: lambda.amazonaws.com
+            Action: sts:AssumeRole
+      Policies:
+        - PolicyName: write-logs
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: Allow
+                Action:
+                  - logs:CreateLogStream
+                  - logs:PutLogEvents
+                Resource: !GetAtt ItemsFunctionLogGroup.Arn
+        - PolicyName: read-write-items
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: Allow
+                Action:
+                  - dynamodb:GetItem
+                  - dynamodb:PutItem
+                  - dynamodb:Scan
+                Resource: !GetAtt ItemsTable.Arn
+
+  ItemsFunction:
+    Type: AWS::Lambda::Function
+    Properties:
+      Runtime: nodejs22.x
+      Architectures:
+        - arm64
+      Handler: index.handler
+      MemorySize: 256
+      Timeout: 10
+      Role: !GetAtt ItemsFunctionRole.Arn
+      LoggingConfig:
+        LogGroup: !Ref ItemsFunctionLogGroup
+      Environment:
+        Variables:
+          TABLE_NAME: !Ref ItemsTable
+      Code:
+        ZipFile: |
+          const { randomUUID } = require('node:crypto');
+          const { DynamoDBClient } = require('@aws-sdk/client-dynamodb');
+          const { DynamoDBDocumentClient, GetCommand, PutCommand, ScanCommand } = require('@aws-sdk/lib-dynamodb');
+
+          const db = DynamoDBDocumentClient.from(new DynamoDBClient({}));
+          const TableName = process.env.TABLE_NAME;
+          const json = (statusCode, body) => ({
+            statusCode,
+            headers: { 'content-type': 'application/json' },
+            body: JSON.stringify(body),
+          });
+
+          exports.handler = async (event) => {
+            switch (event.routeKey) {
+              case 'GET /items': {
+                const { Items } = await db.send(new ScanCommand({ TableName, Limit: 50 }));
+                return json(200, Items);
+              }
+              case 'GET /items/{id}': {
+                const { Item } = await db.send(new GetCommand({ TableName, Key: { id: event.pathParameters.id } }));
+                return Item ? json(200, Item) : json(404, { message: 'Item not found' });
+              }
+              case 'POST /items': {
+                const item = { ...JSON.parse(event.body ?? '{}'), id: randomUUID() };
+                await db.send(new PutCommand({ TableName, Item: item }));
+                return json(201, item);
+              }
+              default:
+                return json(404, { message: 'Route not found' });
+            }
+          };
+
+  # ---------- HTTP API: routes → one Lambda integration ----------
+  ItemsApi:
+    Type: AWS::ApiGatewayV2::Api
+    Properties:
+      Name: !Sub '\${AWS::StackName}-items'
+      ProtocolType: HTTP
+
+  ItemsIntegration:
+    Type: AWS::ApiGatewayV2::Integration
+    Properties:
+      ApiId: !Ref ItemsApi
+      IntegrationType: AWS_PROXY
+      IntegrationUri: !GetAtt ItemsFunction.Arn
+      PayloadFormatVersion: '2.0'
+
+  ListItemsRoute:
+    Type: AWS::ApiGatewayV2::Route
+    Properties:
+      ApiId: !Ref ItemsApi
+      RouteKey: GET /items
+      Target: !Sub 'integrations/\${ItemsIntegration}'
+
+  GetItemRoute:
+    Type: AWS::ApiGatewayV2::Route
+    Properties:
+      ApiId: !Ref ItemsApi
+      RouteKey: GET /items/{id}
+      Target: !Sub 'integrations/\${ItemsIntegration}'
+
+  CreateItemRoute:
+    Type: AWS::ApiGatewayV2::Route
+    Properties:
+      ApiId: !Ref ItemsApi
+      RouteKey: POST /items
+      Target: !Sub 'integrations/\${ItemsIntegration}'
+
+  DefaultStage:
+    Type: AWS::ApiGatewayV2::Stage
+    Properties:
+      ApiId: !Ref ItemsApi
+      StageName: $default
+      AutoDeploy: true
+      DefaultRouteSettings:
+        ThrottlingRateLimit: 10
+        ThrottlingBurstLimit: 20
+
+  ItemsApiInvokePermission:
+    Type: AWS::Lambda::Permission
+    Properties:
+      Action: lambda:InvokeFunction
+      FunctionName: !Ref ItemsFunction
+      Principal: apigateway.amazonaws.com
+      SourceArn: !Sub 'arn:\${AWS::Partition}:execute-api:\${AWS::Region}:\${AWS::AccountId}:\${ItemsApi}/*'
+
+Outputs:
+  ApiUrl:
+    Description: "Try: curl -X POST $URL/items -d '{\\"name\\":\\"first\\"}', then curl $URL/items"
+    Value: !GetAtt ItemsApi.ApiEndpoint
+  TableName:
+    Description: DynamoDB table holding the items
+    Value: !Ref ItemsTable
 `;
 
 export const staticWebsite = `AWSTemplateFormatVersion: '2010-09-09'
