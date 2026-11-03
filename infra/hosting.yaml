@@ -4,9 +4,10 @@ Description: 'cfn-lens hosting: private S3 bucket behind CloudFront, plus GitHub
 Parameters:
   GitHubRepository:
     Type: String
-    Default: Tskate/cfn-lens
-    Description: owner/repo allowed to deploy
-    AllowedPattern: '[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+'
+    Default: Tskate@74553549/cfn-lens@1401535016
+    # Repositories created after 2026-07-15 get numeric IDs in the OIDC sub claim, so a recycled name can't deploy
+    Description: Repository allowed to deploy, as the OIDC sub claim spells it (owner@owner-id/repo@repo-id, or owner/repo for older repositories)
+    AllowedPattern: '[A-Za-z0-9_.-]+(@[0-9]+)?/[A-Za-z0-9_.-]+(@[0-9]+)?'
   DeployBranch:
     Type: String
     Default: main
