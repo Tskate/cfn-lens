@@ -1,0 +1,21 @@
+{
+  "name": "@cfn-lens/core",
+  "private": true,
+  "version": "0.0.0",
+  "description": "Pure TypeScript engine: CloudFormation template → diagram model. No DOM, no Node APIs.",
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "scripts": {
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "typecheck": "tsc -b"
+  },
+  "devDependencies": {
+    "vitest": "^5.0.3"
+  },
+  "dependencies": {
+    "yaml": "^2.9.1"
+  }
+}
