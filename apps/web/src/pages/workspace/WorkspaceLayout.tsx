@@ -45,7 +45,7 @@ export function WorkspaceLayout({ header, editor, diagram, details }: WorkspaceL
       <main className="min-h-0 min-w-0 flex-1">
         {wide ? (
           <ResizablePanelGroup orientation="horizontal">
-            <ResizablePanel id="editor" defaultSize={340} {...sidePanel}>
+            <ResizablePanel id="editor" defaultSize={500} {...sidePanel}>
               {editor}
             </ResizablePanel>
             <WorkspaceSplitter label="Resize template panel" />
