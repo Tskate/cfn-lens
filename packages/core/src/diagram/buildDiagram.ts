@@ -1,13 +1,13 @@
 import type { DiagramEdge, DiagramModel, DiagramNode, FoldedResource, ReferenceKind, Resource, Template, TemplateValue } from '../types';
 import { findReferences, type ValueReference } from '../utils/findReferences';
 import { describeResourceType, docsUrlFor } from './catalog';
-import { findContainment } from './findContainment';
+import { findContainment, placementValues } from './findContainment';
 import { foldPlumbing, type Folding } from './foldPlumbing';
 
 // foldPlumbing: false is "Show all resources"
 export type BuildDiagramOptions = { foldPlumbing?: boolean };
 
-type OutgoingReference = { target: string; via: ReferenceKind; conditions?: ValueReference['conditions'] };
+type OutgoingReference = { target: string; via: ReferenceKind; conditions?: ValueReference['conditions']; range?: ValueReference['range'] };
 type MutableEdge = {
   source: string;
   target: string;
@@ -23,13 +23,28 @@ export function buildDiagram(template: Template, options: BuildDiagramOptions = 
   const groupIds = new Set(groups.map(({ id }) => id));
   const resources = [...template.resources.values()].filter((resource) => !groupIds.has(resource.name));
 
-  // Placement already shows a reference to a VPC or subnet, so groups get no edges
-  const isLinkable = (source: string, target: string) => template.resources.has(target) && target !== source && !groupIds.has(target);
+  // Suppress only the exact unconditional placement reference represented by a container.
   const references = new Map(
-    resources.map((resource) => [resource.name, outgoingReferences(resource).filter(({ target }) => isLinkable(resource.name, target))]),
+    [...template.resources.values()].map((resource) => {
+      const placement = placementValues(resource).flatMap(findReferences);
+      const hasPlacement =
+        parentOf.has(resource.name) ||
+        groups.some((group) => group.id === resource.name && group.kind === 'subnet' && group.parentId !== undefined);
+      const outgoing = outgoingReferences(resource).filter((reference) => {
+        if (!template.resources.has(reference.target) || reference.target === resource.name) return false;
+        const represented =
+          hasPlacement &&
+          groupIds.has(reference.target) &&
+          !reference.conditions?.length &&
+          reference.via !== 'DependsOn' &&
+          placement.some((item) => item.target === reference.target && item.range.start.offset === reference.range?.start.offset);
+        return !represented;
+      });
+      return [resource.name, outgoing];
+    }),
   );
 
-  const folding = foldOrKeep(options, resources, references);
+  const folding = foldOrKeep(options, resources, references, groupIds);
   const shownAs = (id: string): string | undefined => {
     if (folding.absorbed.has(id)) {
       return;
@@ -79,12 +94,13 @@ function foldOrKeep(
   { foldPlumbing: shouldFold = true }: BuildDiagramOptions,
   resources: readonly Resource[],
   references: ReadonlyMap<string, readonly OutgoingReference[]>,
+  groupIds: ReadonlySet<string>,
 ): Folding {
   if (!shouldFold) return NO_FOLDING;
   const conditionalIds = new Set<string>();
   for (const [source, refs] of references) {
     for (const ref of refs) {
-      if (ref.conditions?.length) {
+      if (ref.conditions?.length || groupIds.has(source) || groupIds.has(ref.target)) {
         conditionalIds.add(source);
         conditionalIds.add(ref.target);
       }

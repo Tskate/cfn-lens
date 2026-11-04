@@ -73,8 +73,8 @@ describe('buildDiagram', () => {
       ]);
     });
 
-    it('drop edges to groups, which placement already shows', () => {
-      expect(edges(network)).toEqual(['Server → Alerts']);
+    it('drops placement edges but retains incidental group references', () => {
+      expect(edges(network)).toEqual(['Server → Alerts', 'Alerts → Vpc']);
     });
   });
 
@@ -142,5 +142,23 @@ it('retains opposite branch guards on diagram connections', () => {
   expect(model.edges).toEqual([
     { source: 'A', target: 'B', via: ['Ref'], conditionPaths: [[{ name: 'Prod', value: true }]] },
     { source: 'A', target: 'C', via: ['Ref'], conditionPaths: [[{ name: 'Prod', value: false }]] },
+  ]);
+});
+
+it('preserves dependencies originating from and targeting container resources', () => {
+  const model = diagram(`  Vpc:
+    Type: AWS::EC2::VPC
+    DependsOn: Topic
+  Subnet:
+    Type: AWS::EC2::Subnet
+    DependsOn: Vpc
+    Properties: {VpcId: !Ref Vpc}
+  Topic:
+    Type: AWS::SNS::Topic
+    DependsOn: Subnet`);
+  expect(model.edges).toEqual([
+    { source: 'Vpc', target: 'Topic', via: ['DependsOn'] },
+    { source: 'Subnet', target: 'Vpc', via: ['DependsOn'] },
+    { source: 'Topic', target: 'Subnet', via: ['DependsOn'] },
   ]);
 });

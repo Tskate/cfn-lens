@@ -1,5 +1,5 @@
 import type { DiagramGroup, SubnetAccess } from '@cfn-lens/core';
-import type { NodeProps } from '@xyflow/react';
+import { Handle, Position, type NodeProps } from '@xyflow/react';
 import { cn } from 'cn';
 import type { ContainerFlowNode } from './layoutDiagram';
 
@@ -12,7 +12,13 @@ const subnetClasses: Record<SubnetAccess, { box: string; label: string; title: s
 
 /** A VPC, Availability Zone or subnet box, labelled in its top-left corner. */
 export function ContainerNode({ data }: NodeProps<ContainerFlowNode>) {
-  return <ContainerBox group={data.group} />;
+  return (
+    <>
+      <Handle type="target" position={Position.Top} isConnectable={false} className="!border-0 !bg-transparent" />
+      <ContainerBox group={data.group} />
+      <Handle type="source" position={Position.Bottom} isConnectable={false} className="!border-0 !bg-transparent" />
+    </>
+  );
 }
 
 function ContainerBox({ group }: { group: DiagramGroup }) {

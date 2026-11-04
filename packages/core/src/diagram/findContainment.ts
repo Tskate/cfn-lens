@@ -216,7 +216,7 @@ const PLACEMENT_PATHS: Readonly<Record<string, readonly string[]>> = {
   'AWS::EFS::MountTarget': ['SubnetId'],
 };
 
-function placementValues(resource: Resource): TemplateValue[] {
+export function placementValues(resource: Resource): TemplateValue[] {
   return (PLACEMENT_PATHS[resource.type] ?? []).flatMap((path) => {
     let value = resource.properties;
     for (const key of path.split('.')) value = entryOf(value, key);
