@@ -5,6 +5,7 @@ import type { ContainerFlowNode } from './layoutDiagram';
 
 // Full class names (not built from strings) so Tailwind can find them when scanning the source.
 const subnetClasses: Record<SubnetAccess, { box: string; label: string; title: string }> = {
+  unknown: { box: 'border-dashed border-neutral-400 bg-neutral-100/50', label: 'text-neutral-600', title: 'Routing unknown' },
   public: { box: 'border-subnet-public-border bg-subnet-public', label: 'text-subnet-public-text', title: 'Public' },
   private: { box: 'border-subnet-private-border bg-subnet-private', label: 'text-subnet-private-text', title: 'Private' },
 };
@@ -36,7 +37,16 @@ function ContainerBox({ group }: { group: DiagramGroup }) {
   const classes = subnetClasses[group.access];
 
   return (
-    <div className={cn('size-full rounded-[10px] border px-3 py-2.5', classes.box)}>
+    <div
+      title={
+        group.access === 'unknown'
+          ? 'Routing cannot be resolved from this template: association, route table, or gateway is missing, external, or conditional.'
+          : group.access === 'public'
+            ? 'An explicit route table association and route to an internet gateway were found. This does not guarantee resource reachability.'
+            : 'The explicit route table has no discovered internet gateway route. External changes are not evaluated.'
+      }
+      className={cn('size-full rounded-[10px] border px-3 py-2.5', classes.box)}
+    >
       <p className={cn('text-xs/4', classes.label)}>
         <b className="font-semibold">{classes.title}</b> · {group.id}
       </p>

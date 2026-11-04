@@ -126,13 +126,19 @@ export function DiagramGuide() {
             <b className="font-semibold">Availability Zone</b> — a separate data center.
           </GuideRow>
           <GuideRow swatch={<span className={cn(box, 'border border-subnet-public-border bg-subnet-public')} />}>
-            <b className="font-semibold">Public subnet</b> — reachable from the internet.
+            <b className="font-semibold">Public subnet</b> — a route to an internet gateway is defined. Resource reachability also depends
+            on addresses and security rules.
           </GuideRow>
           <GuideRow swatch={<span className={cn(box, 'border border-subnet-private-border bg-subnet-private')} />}>
-            <b className="font-semibold">Private subnet</b> — only reachable from inside.
+            <b className="font-semibold">Private subnet</b> — the explicit route table has no discovered internet gateway route.
           </GuideRow>
         </GuideSection>
 
+        <GuideSection title="Unresolved routing">
+          <GuideRow swatch={<span className={cn(box, 'border border-dashed border-neutral-400 bg-neutral-100/50')} />}>
+            Routing unknown — the template does not establish an unconditional local routing configuration. Hover the subnet for details.
+          </GuideRow>
+        </GuideSection>
         <GuideSection title="Conditional choices">
           <GuideRow swatch={<span>if …</span>}>
             Connection labels show the conditions required for each alternative. These alternatives may not exist together.

@@ -51,7 +51,7 @@ export type DiagramNode = {
 
 // A subnet is public when its route table has a route to an internet gateway.
 // https://docs.aws.amazon.com/vpc/latest/userguide/configure-subnets.html#subnet-types
-export type SubnetAccess = 'public' | 'private';
+export type SubnetAccess = 'public' | 'private' | 'unknown';
 
 // Containers drawn around resources: VPC › Availability Zone › Subnet (D29).
 // A VPC or subnet uses its logical ID; an AZ, which isn't a resource, gets a synthetic id with ':'.
