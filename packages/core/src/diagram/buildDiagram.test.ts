@@ -69,7 +69,7 @@ describe('buildDiagram', () => {
     it('give each node the group it sits in', () => {
       expect(diagram(network).nodes.map(({ id, parentId }) => [id, parentId])).toEqual([
         ['Server', 'Subnet'],
-        ['Alerts', 'Vpc'],
+        ['Alerts', undefined],
       ]);
     });
 

@@ -23,7 +23,7 @@ const ROUTE_TABLE_ASSOCIATION = 'AWS::EC2::SubnetRouteTableAssociation';
 export function findContainment(template: Template): Containment {
   const resources = [...template.resources.values()];
   const typeOf = (id: string) => template.resources.get(id)?.type;
-  const references = new Map(resources.map((resource) => [resource.name, referencedIds(resource)]));
+  const references = new Map(resources.map((resource) => [resource.name, placementReferences(resource)]));
   const referencesOfType = (id: string, type: string) => (references.get(id) ?? []).filter((target) => typeOf(target) === type);
 
   const publicSubnets = findPublicSubnets(resources, typeOf);
@@ -153,12 +153,41 @@ function lowestCommonGroup(chains: readonly string[][]): string | undefined {
   return first.find((group) => chains.every((chain) => chain.includes(group)));
 }
 
-function referencedIds(resource: Resource): string[] {
-  if (!resource.properties) {
-    return [];
-  }
+// Only documented network configuration establishes placement. Arbitrary references
+// in policies, environment variables, or user data do not locate a resource.
+const PLACEMENT_PATHS: Readonly<Record<string, readonly string[]>> = {
+  'AWS::EC2::Subnet': ['VpcId'],
+  'AWS::EC2::Instance': ['SubnetId', 'NetworkInterfaces'],
+  'AWS::EC2::NetworkInterface': ['SubnetId'],
+  'AWS::EC2::NatGateway': ['SubnetId'],
+  'AWS::EC2::SecurityGroup': ['VpcId'],
+  'AWS::EC2::RouteTable': ['VpcId'],
+  'AWS::EC2::VPCEndpoint': ['VpcId', 'SubnetIds'],
+  'AWS::EC2::SubnetRouteTableAssociation': ['SubnetId'],
+  'AWS::EC2::SubnetNetworkAclAssociation': ['SubnetId'],
+  'AWS::EC2::NetworkAcl': ['VpcId'],
+  'AWS::ElasticLoadBalancingV2::LoadBalancer': ['Subnets', 'SubnetMappings'],
+  'AWS::ElasticLoadBalancing::LoadBalancer': ['Subnets'],
+  'AWS::AutoScaling::AutoScalingGroup': ['VPCZoneIdentifier'],
+  'AWS::Lambda::Function': ['VpcConfig.SubnetIds'],
+  'AWS::ECS::Service': ['NetworkConfiguration.AwsvpcConfiguration.Subnets'],
+  'AWS::RDS::DBSubnetGroup': ['SubnetIds'],
+  'AWS::RDS::DBInstance': ['DBSubnetGroupName'],
+  'AWS::RDS::DBCluster': ['DBSubnetGroupName'],
+  'AWS::ElastiCache::SubnetGroup': ['SubnetIds'],
+  'AWS::ElastiCache::CacheCluster': ['CacheSubnetGroupName'],
+  'AWS::ElastiCache::ReplicationGroup': ['CacheSubnetGroupName'],
+  'AWS::Redshift::ClusterSubnetGroup': ['SubnetIds'],
+  'AWS::Redshift::Cluster': ['ClusterSubnetGroupName'],
+  'AWS::EFS::MountTarget': ['SubnetId'],
+};
 
-  return findReferences(resource.properties).map(({ target }) => target);
+function placementReferences(resource: Resource): string[] {
+  return (PLACEMENT_PATHS[resource.type] ?? []).flatMap((path) => {
+    let value = resource.properties;
+    for (const key of path.split('.')) value = entryOf(value, key);
+    return value ? findReferences(value).map(({ target }) => target) : [];
+  });
 }
 
 function propertyTarget(resource: Resource, key: string): string | undefined {

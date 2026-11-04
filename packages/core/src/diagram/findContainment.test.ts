@@ -143,6 +143,30 @@ describe('findContainment', () => {
     });
 
     // DependsOn orders creation; it doesn't put a resource into a network
+    it('ignores incidental subnet and VPC references', () => {
+      const parentOf = place(
+        res('Function', 'AWS::Lambda::Function', 'Environment: {Variables: {Subnet: !Ref PrivateSubnetA}}'),
+        res('Role', 'AWS::IAM::Role', 'Policies: [{PolicyDocument: {Resource: !Ref PrivateSubnetA}}]'),
+        res('Bucket', 'AWS::S3::Bucket', 'Tags: [{Key: Network, Value: !Ref AppVpc}]'),
+      );
+      expect(parentOf.has('Function')).toBe(false);
+      expect(parentOf.has('Role')).toBe(false);
+      expect(parentOf.has('Bucket')).toBe(false);
+    });
+
+    it('uses nested Lambda and ECS network configuration', () => {
+      const parentOf = place(
+        res('Function', 'AWS::Lambda::Function', 'VpcConfig: {SubnetIds: [!Ref PrivateSubnetA]}'),
+        res(
+          'Service',
+          'AWS::ECS::Service',
+          'NetworkConfiguration: {AwsvpcConfiguration: {Subnets: [!Ref PrivateSubnetA, !Ref PrivateSubnetB]}}',
+        ),
+      );
+      expect(parentOf.get('Function')).toBe('PrivateSubnetA');
+      expect(parentOf.get('Service')).toBe('AppVpc');
+    });
+
     it('ignores DependsOn', () => {
       expect(place(`${res('Logs', 'AWS::S3::Bucket')}\n    DependsOn: PrivateSubnetA`).has('Logs')).toBe(false);
     });
