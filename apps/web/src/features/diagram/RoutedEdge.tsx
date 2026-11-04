@@ -15,7 +15,31 @@ export function RoutedEdge({ data, markerEnd }: EdgeProps<RoutedFlowEdge>) {
   }
 
   const style = data?.highlighted ? edgeStyles.highlighted : edgeStyles.regular;
-  return <BaseEdge path={toPath(start, rest)} markerEnd={markerEnd} style={style} />;
+  const via = data?.via ?? [];
+  const orderOnly = via.length === 1 && via[0] === 'DependsOn';
+  const midpoint = [start, ...rest][Math.floor((rest.length + 1) / 2)];
+  const label = via.map((kind) => (kind === 'DependsOn' ? 'deployment order' : kind)).join(' + ');
+  return (
+    <g>
+      <title>{`References target: ${label}. Arrows do not represent traffic flow.`}</title>
+      <BaseEdge path={toPath(start, rest)} markerEnd={markerEnd} style={{ ...style, strokeDasharray: orderOnly ? '6 4' : undefined }} />
+      {midpoint && (
+        <text
+          x={midpoint.x}
+          y={midpoint.y - 8}
+          textAnchor="middle"
+          fontSize={10}
+          fill={style.stroke}
+          stroke="var(--color-background)"
+          strokeWidth={4}
+          paintOrder="stroke"
+          pointerEvents="none"
+        >
+          {label}
+        </text>
+      )}
+    </g>
+  );
 }
 
 function toPath(start: XYPosition, rest: XYPosition[]): string {

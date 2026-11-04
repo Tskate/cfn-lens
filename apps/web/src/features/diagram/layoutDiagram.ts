@@ -1,4 +1,4 @@
-import type { DiagramGroup, DiagramModel, DiagramNode, FoldedResource, ResourceIcon } from '@cfn-lens/core';
+import type { DiagramGroup, DiagramModel, DiagramNode, FoldedResource, ReferenceKind, ResourceIcon } from '@cfn-lens/core';
 import { MarkerType, type Edge, type Node, type XYPosition } from '@xyflow/react';
 import type { ElkExtendedEdge, ElkNode, LayoutOptions } from 'elkjs/lib/elk.bundled.js';
 
@@ -12,7 +12,7 @@ export type ResourceNodeData = {
 export type ResourceFlowNode = Node<ResourceNodeData, 'resource'>;
 export type ContainerFlowNode = Node<{ group: DiagramGroup }, 'container'>;
 export type DiagramFlowNode = ResourceFlowNode | ContainerFlowNode;
-export type RoutedEdgeData = { points: XYPosition[]; highlighted?: boolean };
+export type RoutedEdgeData = { points: XYPosition[]; via: readonly ReferenceKind[]; highlighted?: boolean };
 export type RoutedFlowEdge = Edge<RoutedEdgeData, 'routed'>;
 export type DiagramLayout = { nodes: DiagramFlowNode[]; edges: RoutedFlowEdge[] };
 
@@ -102,7 +102,7 @@ async function layoutDiagram(model: DiagramModel): Promise<DiagramLayout> {
   (graph.children ?? []).forEach((child) => visit(child, undefined));
 
   const routes = new Map((graph.edges ?? []).map((edge) => [edge.id, pointsOf(edge)]));
-  const edges = model.edges.map(({ source, target }): RoutedFlowEdge => {
+  const edges = model.edges.map(({ source, target, via }): RoutedFlowEdge => {
     const id = edgeId(source, target);
 
     return {
@@ -112,7 +112,7 @@ async function layoutDiagram(model: DiagramModel): Promise<DiagramLayout> {
       target,
       zIndex: EDGE_Z_INDEX,
       selectable: false,
-      data: { points: routes.get(id) ?? [] },
+      data: { points: routes.get(id) ?? [], via },
       markerEnd: { type: MarkerType.ArrowClosed, width: 16, height: 16, color: 'var(--color-group-vpc)' },
     };
   });

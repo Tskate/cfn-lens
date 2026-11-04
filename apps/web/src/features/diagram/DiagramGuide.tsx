@@ -16,7 +16,7 @@ function FoldBadge({ children, className }: { children: ReactNode; className?: s
   );
 }
 
-function Arrow({ className }: { className: string }) {
+function Arrow({ className, dashed = false }: { className: string; dashed?: boolean }) {
   return (
     <svg
       width="44"
@@ -28,7 +28,7 @@ function Arrow({ className }: { className: string }) {
       strokeLinejoin="round"
       className={className}
     >
-      <path d="M2 6h38M34 2l6 4-6 4" />
+      <path d="M2 6h38M34 2l6 4-6 4" strokeDasharray={dashed ? '6 4' : undefined} />
     </svg>
   );
 }
@@ -136,7 +136,12 @@ export function DiagramGuide() {
         <GuideSection title="Arrows are references">
           <GuideRow swatch={<Arrow className="stroke-group-vpc" />}>
             One resource points to another with <code className={codeClass}>!Ref</code>, <code className={codeClass}>!GetAtt</code> or
-            similar. Hover to see which.
+            similar. The label shows which reference is used. Arrows point from the referring resource to its target; they do not show
+            traffic flow.
+          </GuideRow>
+          <GuideRow swatch={<Arrow className="stroke-group-vpc" dashed />}>
+            Deployment order only: the source uses DependsOn to wait for the target. A solid arrow can also include deployment order when
+            both kinds exist.
           </GuideRow>
           <GuideRow swatch={<Arrow className="stroke-blue-600" />}>Connections of the resource you selected.</GuideRow>
         </GuideSection>
