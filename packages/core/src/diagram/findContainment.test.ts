@@ -143,6 +143,14 @@ describe('findContainment', () => {
     });
 
     // DependsOn orders creation; it doesn't put a resource into a network
+    it('keeps alternative subnet choices out of simultaneous containment', () => {
+      const result = contain(
+        [webApp, res('Server', 'AWS::EC2::Instance', 'SubnetId: !If [Prod, !Ref PrivateSubnetA, !Ref PrivateSubnetB]')].join('\n'),
+      );
+      expect(result.parentOf.has('Server')).toBe(false);
+      expect(result.placementAlternatives.get('Server')).toEqual(['PrivateSubnetA if Prod=true', 'PrivateSubnetB if Prod=false']);
+    });
+
     it('ignores incidental subnet and VPC references', () => {
       const parentOf = place(
         res('Function', 'AWS::Lambda::Function', 'Environment: {Variables: {Subnet: !Ref PrivateSubnetA}}'),

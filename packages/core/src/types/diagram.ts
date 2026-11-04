@@ -44,6 +44,7 @@ export type DiagramNode = {
   range: SourceRange;
   // The group the resource sits in; none for resources outside every VPC
   parentId?: string;
+  placementAlternatives?: readonly string[];
   // Plumbing folded into this node, in template order
   folded: readonly FoldedResource[];
 };
@@ -64,6 +65,8 @@ export type DiagramEdge = {
   source: string;
   target: string;
   via: readonly ReferenceKind[];
+  // OR of alternative condition paths; each path is an AND. Missing means unconditional.
+  conditionPaths?: readonly (readonly { name: string; value: boolean }[])[];
 };
 
 export type DiagramModel = {

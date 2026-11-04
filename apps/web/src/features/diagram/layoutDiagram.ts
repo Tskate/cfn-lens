@@ -1,4 +1,4 @@
-import type { DiagramGroup, DiagramModel, DiagramNode, FoldedResource, ReferenceKind, ResourceIcon } from '@cfn-lens/core';
+import type { DiagramEdge, DiagramGroup, DiagramModel, DiagramNode, FoldedResource, ReferenceKind, ResourceIcon } from '@cfn-lens/core';
 import { MarkerType, type Edge, type Node, type XYPosition } from '@xyflow/react';
 import type { ElkExtendedEdge, ElkNode, LayoutOptions } from 'elkjs/lib/elk.bundled.js';
 
@@ -7,12 +7,18 @@ export type ResourceNodeData = {
   typeName: string;
   icon: ResourceIcon;
   condition?: string;
+  placementAlternatives?: readonly string[];
   folded: readonly FoldedResource[];
 };
 export type ResourceFlowNode = Node<ResourceNodeData, 'resource'>;
 export type ContainerFlowNode = Node<{ group: DiagramGroup }, 'container'>;
 export type DiagramFlowNode = ResourceFlowNode | ContainerFlowNode;
-export type RoutedEdgeData = { points: XYPosition[]; via: readonly ReferenceKind[]; highlighted?: boolean };
+export type RoutedEdgeData = {
+  points: XYPosition[];
+  via: readonly ReferenceKind[];
+  conditionPaths?: DiagramEdge['conditionPaths'];
+  highlighted?: boolean;
+};
 export type RoutedFlowEdge = Edge<RoutedEdgeData, 'routed'>;
 export type DiagramLayout = { nodes: DiagramFlowNode[]; edges: RoutedFlowEdge[] };
 
@@ -102,7 +108,7 @@ async function layoutDiagram(model: DiagramModel): Promise<DiagramLayout> {
   (graph.children ?? []).forEach((child) => visit(child, undefined));
 
   const routes = new Map((graph.edges ?? []).map((edge) => [edge.id, pointsOf(edge)]));
-  const edges = model.edges.map(({ source, target, via }): RoutedFlowEdge => {
+  const edges = model.edges.map(({ source, target, via, conditionPaths }): RoutedFlowEdge => {
     const id = edgeId(source, target);
 
     return {
@@ -112,7 +118,7 @@ async function layoutDiagram(model: DiagramModel): Promise<DiagramLayout> {
       target,
       zIndex: EDGE_Z_INDEX,
       selectable: false,
-      data: { points: routes.get(id) ?? [], via },
+      data: { points: routes.get(id) ?? [], via, conditionPaths },
       markerEnd: { type: MarkerType.ArrowClosed, width: 16, height: 16, color: 'var(--color-group-vpc)' },
     };
   });
@@ -149,12 +155,19 @@ function toContainerNode(group: DiagramGroup, { x = 0, y = 0, width, height }: E
 }
 
 function toResourceNode(node: DiagramNode, { x = 0, y = 0 }: ElkNode, parentId: string | undefined): ResourceFlowNode {
-  const data = { resourceType: node.type, typeName: node.typeName, icon: node.icon, condition: node.condition, folded: node.folded };
+  const data = {
+    resourceType: node.type,
+    typeName: node.typeName,
+    icon: node.icon,
+    condition: node.condition,
+    placementAlternatives: node.placementAlternatives,
+    folded: node.folded,
+  };
   return { id: node.id, type: 'resource', position: { x, y }, parentId, data };
 }
 
 function heightOf(node: DiagramNode): number {
-  if (node.condition === undefined) {
+  if (node.condition === undefined && !node.placementAlternatives?.length) {
     return NODE_HEIGHT;
   }
 

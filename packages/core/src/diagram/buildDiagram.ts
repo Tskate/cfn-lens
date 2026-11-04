@@ -1,5 +1,5 @@
 import type { DiagramEdge, DiagramModel, DiagramNode, FoldedResource, ReferenceKind, Resource, Template, TemplateValue } from '../types';
-import { findReferences } from '../utils/findReferences';
+import { findReferences, type ValueReference } from '../utils/findReferences';
 import { describeResourceType, docsUrlFor } from './catalog';
 import { findContainment } from './findContainment';
 import { foldPlumbing, type Folding } from './foldPlumbing';
@@ -7,14 +7,19 @@ import { foldPlumbing, type Folding } from './foldPlumbing';
 // foldPlumbing: false is "Show all resources"
 export type BuildDiagramOptions = { foldPlumbing?: boolean };
 
-type OutgoingReference = { target: string; via: ReferenceKind };
-type MutableEdge = { source: string; target: string; via: ReferenceKind[] };
+type OutgoingReference = { target: string; via: ReferenceKind; conditions?: ValueReference['conditions'] };
+type MutableEdge = {
+  source: string;
+  target: string;
+  via: ReferenceKind[];
+  conditionPaths?: (readonly { name: string; value: boolean }[])[];
+};
 
 const NO_FOLDING: Folding = { ownerOf: new Map(), absorbed: new Set() };
 const SECURITY_GROUP_RULE_TYPES = new Set(['AWS::EC2::SecurityGroup', 'AWS::EC2::SecurityGroupIngress', 'AWS::EC2::SecurityGroupEgress']);
 
 export function buildDiagram(template: Template, options: BuildDiagramOptions = {}): DiagramModel {
-  const { groups, parentOf } = findContainment(template);
+  const { groups, parentOf, placementAlternatives } = findContainment(template);
   const groupIds = new Set(groups.map(({ id }) => id));
   const resources = [...template.resources.values()].filter((resource) => !groupIds.has(resource.name));
 
@@ -36,7 +41,7 @@ export function buildDiagram(template: Template, options: BuildDiagramOptions = 
   const edges = new Map<string, MutableEdge>();
 
   for (const [name, outgoing] of references) {
-    for (const { target, via } of outgoing) {
+    for (const { target, via, conditions } of outgoing) {
       const source = shownAs(name);
       const shownTarget = shownAs(target);
       const isHidden = source === undefined || shownTarget === undefined;
@@ -45,7 +50,7 @@ export function buildDiagram(template: Template, options: BuildDiagramOptions = 
         continue;
       }
 
-      addEdge(edges, source, shownTarget, via);
+      addEdge(edges, source, shownTarget, via, conditions);
     }
   }
 
@@ -61,7 +66,10 @@ export function buildDiagram(template: Template, options: BuildDiagramOptions = 
 
   const nodes = resources
     .filter((resource) => shownAs(resource.name) === resource.name)
-    .map((resource) => toNode(resource, parentOf.get(resource.name), foldedInto.get(resource.name) ?? []));
+    .map((resource) => ({
+      ...toNode(resource, parentOf.get(resource.name), foldedInto.get(resource.name) ?? []),
+      placementAlternatives: placementAlternatives.get(resource.name),
+    }));
   const absorbed = resources.filter((resource) => folding.absorbed.has(resource.name)).map(toFolded);
 
   return { groups, nodes, edges: [...edges.values()] satisfies DiagramEdge[], absorbed };
@@ -72,8 +80,15 @@ function foldOrKeep(
   resources: readonly Resource[],
   references: ReadonlyMap<string, readonly OutgoingReference[]>,
 ): Folding {
-  if (!shouldFold) {
-    return NO_FOLDING;
+  if (!shouldFold) return NO_FOLDING;
+  const conditionalIds = new Set<string>();
+  for (const [source, refs] of references) {
+    for (const ref of refs) {
+      if (ref.conditions?.length) {
+        conditionalIds.add(source);
+        conditionalIds.add(ref.target);
+      }
+    }
   }
 
   const byName = new Map(resources.map((resource) => [resource.name, resource]));
@@ -92,7 +107,8 @@ function foldOrKeep(
     }
   }
 
-  const plumbingOf = (id: string) => describeResourceType(byName.get(id)?.type ?? '').plumbing;
+  const plumbingOf = (id: string) =>
+    conditionalIds.has(id) || byName.get(id)?.condition ? undefined : describeResourceType(byName.get(id)?.type ?? '').plumbing;
 
   // What the plumbing is attached to, else whoever uses it. A role's own references are what it
   // grants access to, so they become the owner's edges rather than owner candidates.
@@ -171,15 +187,23 @@ function outgoingReferences(resource: Resource): OutgoingReference[] {
   return [...findReferences(resource.properties), ...dependsOn];
 }
 
-function addEdge(edges: Map<string, MutableEdge>, source: string, target: string, via: ReferenceKind): void {
+function addEdge(
+  edges: Map<string, MutableEdge>,
+  source: string,
+  target: string,
+  via: ReferenceKind,
+  conditions?: ValueReference['conditions'],
+): void {
   const key = JSON.stringify([source, target]);
   const edge = edges.get(key);
 
   if (!edge) {
-    edges.set(key, { source, target, via: [via] });
+    edges.set(key, { source, target, via: [via], ...(conditions ? { conditionPaths: [conditions] } : {}) });
     return;
   }
 
+  if (!conditions) delete edge.conditionPaths;
+  else if (edge.conditionPaths) edge.conditionPaths.push(conditions);
   if (!edge.via.includes(via)) {
     edge.via.push(via);
   }

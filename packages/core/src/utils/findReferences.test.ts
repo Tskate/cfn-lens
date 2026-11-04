@@ -106,3 +106,24 @@ describe('findReferences', () => {
     expect(targets(source)).toEqual(['ProdTopic', 'DevTopic.Name', 'Bucket']);
   });
 });
+
+it('preserves nested branch conditions', () => {
+  const refs = find('V: !If [Prod, !If [Blue, !Ref A, !Ref B], !Ref C]');
+  expect(refs.map(({ target, conditions }) => ({ target, conditions }))).toEqual([
+    {
+      target: 'A',
+      conditions: [
+        { name: 'Prod', value: true },
+        { name: 'Blue', value: true },
+      ],
+    },
+    {
+      target: 'B',
+      conditions: [
+        { name: 'Prod', value: true },
+        { name: 'Blue', value: false },
+      ],
+    },
+    { target: 'C', conditions: [{ name: 'Prod', value: false }] },
+  ]);
+});

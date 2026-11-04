@@ -6,6 +6,7 @@ export type Containment = {
   groups: DiagramGroup[];
   // Resource logical ID → the group it sits in; resources outside every VPC are absent
   parentOf: ReadonlyMap<string, string>;
+  placementAlternatives: ReadonlyMap<string, readonly string[]>;
 };
 
 type Zone = { id: string; name: string; parentId?: string };
@@ -75,12 +76,25 @@ export function findContainment(template: Template): Containment {
   };
 
   const parentOf = new Map<string, string>();
+  const placementAlternatives = new Map<string, readonly string[]>();
 
   for (const resource of resources) {
     if (groupParents.has(resource.name)) {
       continue;
     }
 
+    const conditional = placementValues(resource)
+      .flatMap(findReferences)
+      .filter((ref) => ref.conditions?.length);
+    if (conditional.length > 0) {
+      placementAlternatives.set(
+        resource.name,
+        conditional.map(
+          (ref) => `${ref.target} if ${ref.conditions!.map((condition) => `${condition.name}=${condition.value}`).join(' and ')}`,
+        ),
+      );
+      continue;
+    }
     const targets = references.get(resource.name) ?? [];
     const subnetIds = targets.flatMap(subnetsReachedFrom);
     const parentId = lowestCommonGroup(subnetIds.map(ancestorsOf)) ?? referencesOfType(resource.name, VPC)[0];
@@ -90,7 +104,7 @@ export function findContainment(template: Template): Containment {
     }
   }
 
-  return { groups, parentOf };
+  return { groups, parentOf, placementAlternatives };
 }
 
 // Public = associated with a route table that has a route to an internet gateway in this template.
@@ -182,12 +196,18 @@ const PLACEMENT_PATHS: Readonly<Record<string, readonly string[]>> = {
   'AWS::EFS::MountTarget': ['SubnetId'],
 };
 
-function placementReferences(resource: Resource): string[] {
+function placementValues(resource: Resource): TemplateValue[] {
   return (PLACEMENT_PATHS[resource.type] ?? []).flatMap((path) => {
     let value = resource.properties;
     for (const key of path.split('.')) value = entryOf(value, key);
-    return value ? findReferences(value).map(({ target }) => target) : [];
+    return value ? [value] : [];
   });
+}
+
+function placementReferences(resource: Resource): string[] {
+  return placementValues(resource)
+    .flatMap(findReferences)
+    .map(({ target }) => target);
 }
 
 function propertyTarget(resource: Resource, key: string): string | undefined {

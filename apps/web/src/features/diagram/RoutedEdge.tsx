@@ -18,7 +18,11 @@ export function RoutedEdge({ data, markerEnd }: EdgeProps<RoutedFlowEdge>) {
   const via = data?.via ?? [];
   const orderOnly = via.length === 1 && via[0] === 'DependsOn';
   const midpoint = [start, ...rest][Math.floor((rest.length + 1) / 2)];
-  const label = via.map((kind) => (kind === 'DependsOn' ? 'deployment order' : kind)).join(' + ');
+  const conditionLabel = data?.conditionPaths
+    ?.map((path) => path.map(({ name, value }) => (value ? name : `not ${name}`)).join(' and '))
+    .join(' or ');
+  const label =
+    via.map((kind) => (kind === 'DependsOn' ? 'deployment order' : kind)).join(' + ') + (conditionLabel ? ` if ${conditionLabel}` : '');
   return (
     <g>
       <title>{`References target: ${label}. Arrows do not represent traffic flow.`}</title>

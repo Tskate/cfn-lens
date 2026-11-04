@@ -133,6 +133,15 @@ export function DiagramGuide() {
           </GuideRow>
         </GuideSection>
 
+        <GuideSection title="Conditional choices">
+          <GuideRow swatch={<span>if …</span>}>
+            Connection labels show the conditions required for each alternative. These alternatives may not exist together.
+          </GuideRow>
+          <GuideRow swatch={<span>?</span>}>
+            “Placement varies by condition” leaves a resource outside network boxes until its subnet choice is resolved. Hover the note for
+            alternatives. Conditional relationships keep helper resources unfolded.
+          </GuideRow>
+        </GuideSection>
         <GuideSection title="Arrows are references">
           <GuideRow swatch={<Arrow className="stroke-group-vpc" />}>
             One resource points to another with <code className={codeClass}>!Ref</code>, <code className={codeClass}>!GetAtt</code> or

@@ -129,3 +129,18 @@ describe('buildDiagram', () => {
     });
   });
 });
+
+it('retains opposite branch guards on diagram connections', () => {
+  const model = diagram(`  A:
+    Type: AWS::SNS::Topic
+    Properties:
+      Value: !If [Prod, !Ref B, !Ref C]
+  B:
+    Type: AWS::SNS::Topic
+  C:
+    Type: AWS::SNS::Topic`);
+  expect(model.edges).toEqual([
+    { source: 'A', target: 'B', via: ['Ref'], conditionPaths: [[{ name: 'Prod', value: true }]] },
+    { source: 'A', target: 'C', via: ['Ref'], conditionPaths: [[{ name: 'Prod', value: false }]] },
+  ]);
+});
