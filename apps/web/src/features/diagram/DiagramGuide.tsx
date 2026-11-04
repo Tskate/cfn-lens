@@ -141,7 +141,8 @@ export function DiagramGuide() {
         </GuideSection>
         <GuideSection title="Conditional choices">
           <GuideRow swatch={<span>if …</span>}>
-            Connection labels show the conditions required for each alternative. These alternatives may not exist together.
+            Hover or keyboard-focus a connection to see the conditions required for each alternative. These alternatives may not exist
+            together.
           </GuideRow>
           <GuideRow swatch={<span>?</span>}>
             “Placement varies by condition” leaves a resource outside network boxes until its subnet choice is resolved. Hover the note for
@@ -151,8 +152,8 @@ export function DiagramGuide() {
         <GuideSection title="Arrows are references">
           <GuideRow swatch={<Arrow className="stroke-group-vpc" />}>
             One resource points to another with <code className={codeClass}>!Ref</code>, <code className={codeClass}>!GetAtt</code> or
-            similar. The label shows which reference is used. Arrows point from the referring resource to its target; they do not show
-            traffic flow.
+            similar. Hover or keyboard-focus an arrow to read its reference type at any zoom level. Arrows point from the referring resource
+            to its target; they do not show traffic flow.
           </GuideRow>
           <GuideRow swatch={<Arrow className="stroke-group-vpc" dashed />}>
             Deployment order only: the source uses DependsOn to wait for the target. A solid arrow can also include deployment order when
