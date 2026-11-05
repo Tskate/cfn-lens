@@ -16,7 +16,7 @@ function FoldBadge({ children, className }: { children: ReactNode; className?: s
   );
 }
 
-function Arrow({ className }: { className: string }) {
+function Arrow({ className, dashed = false }: { className: string; dashed?: boolean }) {
   return (
     <svg
       width="44"
@@ -28,7 +28,7 @@ function Arrow({ className }: { className: string }) {
       strokeLinejoin="round"
       className={className}
     >
-      <path d="M2 6h38M34 2l6 4-6 4" />
+      <path d="M2 6h38M34 2l6 4-6 4" strokeDasharray={dashed ? '6 4' : undefined} />
     </svg>
   );
 }
@@ -126,17 +126,38 @@ export function DiagramGuide() {
             <b className="font-semibold">Availability Zone</b> — a separate data center.
           </GuideRow>
           <GuideRow swatch={<span className={cn(box, 'border border-subnet-public-border bg-subnet-public')} />}>
-            <b className="font-semibold">Public subnet</b> — reachable from the internet.
+            <b className="font-semibold">Public subnet</b> — a route to an internet gateway is defined. Resource reachability also depends
+            on addresses and security rules.
           </GuideRow>
           <GuideRow swatch={<span className={cn(box, 'border border-subnet-private-border bg-subnet-private')} />}>
-            <b className="font-semibold">Private subnet</b> — only reachable from inside.
+            <b className="font-semibold">Private subnet</b> — the explicit route table has no discovered internet gateway route.
           </GuideRow>
         </GuideSection>
 
+        <GuideSection title="Unresolved routing">
+          <GuideRow swatch={<span className={cn(box, 'border border-dashed border-neutral-400 bg-neutral-100/50')} />}>
+            Routing unknown — the template does not establish an unconditional local routing configuration. Hover the subnet for details.
+          </GuideRow>
+        </GuideSection>
+        <GuideSection title="Conditional choices">
+          <GuideRow swatch={<span>if …</span>}>
+            Hover or keyboard-focus a connection to see the conditions required for each alternative. These alternatives may not exist
+            together.
+          </GuideRow>
+          <GuideRow swatch={<span>?</span>}>
+            “Placement varies by condition” leaves a resource outside network boxes until its subnet choice is resolved. Hover the note for
+            alternatives. Conditional relationships keep helper resources unfolded.
+          </GuideRow>
+        </GuideSection>
         <GuideSection title="Arrows are references">
           <GuideRow swatch={<Arrow className="stroke-group-vpc" />}>
             One resource points to another with <code className={codeClass}>!Ref</code>, <code className={codeClass}>!GetAtt</code> or
-            similar. Hover to see which.
+            similar. Hover or keyboard-focus an arrow to read its reference type at any zoom level. Arrows point from the referring resource
+            to its target; they do not show traffic flow.
+          </GuideRow>
+          <GuideRow swatch={<Arrow className="stroke-group-vpc" dashed />}>
+            Deployment order only: the source uses DependsOn to wait for the target. A solid arrow can also include deployment order when
+            both kinds exist.
           </GuideRow>
           <GuideRow swatch={<Arrow className="stroke-blue-600" />}>Connections of the resource you selected.</GuideRow>
         </GuideSection>

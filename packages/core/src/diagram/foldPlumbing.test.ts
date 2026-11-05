@@ -204,12 +204,15 @@ describe('folding plumbing', () => {
       res('Route', 'AWS::EC2::Route', 'RouteTableId: !Ref Routes', 'GatewayId: !Ref Igw'),
     ];
 
-    it('is absorbed by the boxes: not drawn, listed on the model', () => {
+    it('keeps helpers whose container connections are not represented by placement', () => {
       const model = folded(...routing);
 
-      expect(model.nodes.map(({ id }) => id)).toEqual(['Igw']);
-      expect(model.edges).toEqual([]);
-      expect(model.absorbed.map(({ id }) => id)).toEqual(['Attach', 'Routes', 'Route']);
+      expect(model.nodes.map(({ id }) => id)).toEqual(['Igw', 'Attach']);
+      expect(model.edges).toEqual([
+        { source: 'Attach', target: 'Vpc', via: ['Ref'] },
+        { source: 'Attach', target: 'Igw', via: ['Ref'] },
+      ]);
+      expect(model.absorbed.map(({ id }) => id)).toEqual(['Routes', 'Route']);
     });
 
     // A subnet group's subnets already place the database (findContainment)

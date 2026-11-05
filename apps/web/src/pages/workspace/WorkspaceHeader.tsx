@@ -19,12 +19,12 @@ export function WorkspaceHeader({ documentName, foldedCount, showAllResources, o
         cfn-lens
       </Link>
       <span aria-hidden="true" className="h-5 w-px bg-border" />
-      <span className="flex min-w-0 items-center gap-2">
+      <span className="flex min-w-0 max-w-full items-center gap-2">
         <File className="size-4 shrink-0 text-neutral-500" aria-hidden="true" />
         <span className="truncate font-medium">{documentName}</span>
       </span>
 
-      <span className="flex-1" />
+      <span className="hidden flex-1 sm:block" />
 
       <label className="flex cursor-pointer items-center gap-2.5">
         <Switch checked={showAllResources} onCheckedChange={onShowAllResourcesChange} />

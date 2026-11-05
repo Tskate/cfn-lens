@@ -1,3 +1,4 @@
+import { parseTemplate } from './parser';
 import { describe, expect, it } from 'vitest';
 import type { YAMLMap } from 'yaml';
 
@@ -113,5 +114,59 @@ describe('validateResources', () => {
     it('accepts a diamond', () => {
       expect(codes([res('A', 'DependsOn: [B, C]'), res('B', 'DependsOn: D'), res('C', 'DependsOn: D'), res('D')].join('\n'))).toEqual([]);
     });
+  });
+});
+
+describe('resource property references', () => {
+  const diagnostics = (text: string) => parseTemplate(text).diagnostics;
+  it('reports unresolved Ref, GetAtt, and Sub targets', () => {
+    const result = diagnostics(`Resources:
+  Topic:
+    Type: AWS::SNS::Topic
+    Properties:
+      A: !Ref Missing
+      B: !GetAtt Absent.Arn
+      C: !Sub '\${Unknown.Arn}'
+`);
+    expect(result.filter(({ code }) => code === 'unknown-resource-reference')).toHaveLength(3);
+  });
+  it('accepts parameters, pseudo parameters, local Sub variables, and resources', () => {
+    expect(
+      diagnostics(`Parameters:
+  Name: {Type: String}
+Resources:
+  Bucket: {Type: 'AWS::S3::Bucket'}
+  Topic:
+    Type: AWS::SNS::Topic
+    Properties:
+      A: !Ref Name
+      B: !Ref AWS::Region
+      C: !GetAtt Bucket.Arn
+      D: !Sub ['\${Local}-\${AWS::AccountId}', {Local: !Ref Name}]
+`),
+    ).toEqual([]);
+  });
+  it('rejects GetAtt targeting a parameter', () => {
+    expect(
+      diagnostics(`Parameters:
+  Name: {Type: String}
+Resources:
+  Topic:
+    Type: AWS::SNS::Topic
+    Properties: {A: !GetAtt Name.Arn}
+`).some(({ code }) => code === 'unknown-resource-reference'),
+    ).toBe(true);
+  });
+  it('detects cycles mixing explicit and implicit dependencies', () => {
+    expect(
+      diagnostics(`Resources:
+  A:
+    Type: AWS::SNS::Topic
+    DependsOn: B
+  B:
+    Type: AWS::SNS::Topic
+    Properties: {Name: !Ref A}
+`).some(({ code }) => code === 'circular-dependency'),
+    ).toBe(true);
   });
 });

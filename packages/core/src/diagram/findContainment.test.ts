@@ -43,8 +43,8 @@ describe('findContainment', () => {
         { kind: 'availabilityZone', id: 'AppVpc:AZ 2', name: 'AZ 2', parentId: 'AppVpc' },
         { kind: 'subnet', id: 'PublicSubnetA', access: 'public', cidr: '10.0.1.0/24', parentId: 'AppVpc:AZ 1', range: expect.anything() },
         expect.objectContaining({ id: 'PublicSubnetB', access: 'public', parentId: 'AppVpc:AZ 2' }),
-        expect.objectContaining({ id: 'PrivateSubnetA', access: 'private', parentId: 'AppVpc:AZ 1' }),
-        expect.objectContaining({ id: 'PrivateSubnetB', access: 'private', parentId: 'AppVpc:AZ 2' }),
+        expect.objectContaining({ id: 'PrivateSubnetA', access: 'unknown', parentId: 'AppVpc:AZ 1' }),
+        expect.objectContaining({ id: 'PrivateSubnetB', access: 'unknown', parentId: 'AppVpc:AZ 2' }),
       ]);
     });
 
@@ -75,6 +75,29 @@ describe('findContainment', () => {
       ]);
     });
 
+    it.each([
+      ['external gateway', 'GatewayId: !ImportValue Gateway'],
+      ['parameter gateway', 'GatewayId: !Ref GatewayParameter'],
+      ['conditional gateway', 'GatewayId: !If [Enabled, !Ref AppIgw, !Ref AWS::NoValue]'],
+    ])('keeps %s routing unknown', (_label, gateway) => {
+      const result = contain(
+        [
+          vpc,
+          subnet('Subnet'),
+          res('AppIgw', 'AWS::EC2::InternetGateway'),
+          res('Routes', 'AWS::EC2::RouteTable', 'VpcId: !Ref AppVpc'),
+          res('Route', 'AWS::EC2::Route', 'RouteTableId: !Ref Routes', gateway),
+          res('Assoc', 'AWS::EC2::SubnetRouteTableAssociation', 'SubnetId: !Ref Subnet', 'RouteTableId: !Ref Routes'),
+        ].join('\n'),
+      );
+      expect(result.groups.find(({ id }) => id === 'Subnet')).toMatchObject({ access: 'unknown' });
+    });
+
+    it('keeps a conditional internet route unknown', () => {
+      const source = webApp.replace('    Type: AWS::EC2::Route\n', '    Type: AWS::EC2::Route\n    Condition: Enabled\n');
+      expect(contain(source).groups.find(({ id }) => id === 'PublicSubnetA')).toMatchObject({ access: 'unknown' });
+    });
+
     // Only a direct route to an internet gateway makes a subnet public
     it.each([
       ['no route table', []],
@@ -98,7 +121,10 @@ describe('findContainment', () => {
         ],
       ],
     ])('call a subnet with %s private', (_label, extra) => {
-      expect(contain([vpc, subnet('Subnet'), ...extra].join('\n')).groups[1]).toMatchObject({ id: 'Subnet', access: 'private' });
+      expect(contain([vpc, subnet('Subnet'), ...extra].join('\n')).groups[1]).toMatchObject({
+        id: 'Subnet',
+        access: _label === 'no route table' ? 'unknown' : 'private',
+      });
     });
   });
 
@@ -143,6 +169,38 @@ describe('findContainment', () => {
     });
 
     // DependsOn orders creation; it doesn't put a resource into a network
+    it('keeps alternative subnet choices out of simultaneous containment', () => {
+      const result = contain(
+        [webApp, res('Server', 'AWS::EC2::Instance', 'SubnetId: !If [Prod, !Ref PrivateSubnetA, !Ref PrivateSubnetB]')].join('\n'),
+      );
+      expect(result.parentOf.has('Server')).toBe(false);
+      expect(result.placementAlternatives.get('Server')).toEqual(['PrivateSubnetA if Prod=true', 'PrivateSubnetB if Prod=false']);
+    });
+
+    it('ignores incidental subnet and VPC references', () => {
+      const parentOf = place(
+        res('Function', 'AWS::Lambda::Function', 'Environment: {Variables: {Subnet: !Ref PrivateSubnetA}}'),
+        res('Role', 'AWS::IAM::Role', 'Policies: [{PolicyDocument: {Resource: !Ref PrivateSubnetA}}]'),
+        res('Bucket', 'AWS::S3::Bucket', 'Tags: [{Key: Network, Value: !Ref AppVpc}]'),
+      );
+      expect(parentOf.has('Function')).toBe(false);
+      expect(parentOf.has('Role')).toBe(false);
+      expect(parentOf.has('Bucket')).toBe(false);
+    });
+
+    it('uses nested Lambda and ECS network configuration', () => {
+      const parentOf = place(
+        res('Function', 'AWS::Lambda::Function', 'VpcConfig: {SubnetIds: [!Ref PrivateSubnetA]}'),
+        res(
+          'Service',
+          'AWS::ECS::Service',
+          'NetworkConfiguration: {AwsvpcConfiguration: {Subnets: [!Ref PrivateSubnetA, !Ref PrivateSubnetB]}}',
+        ),
+      );
+      expect(parentOf.get('Function')).toBe('PrivateSubnetA');
+      expect(parentOf.get('Service')).toBe('AppVpc');
+    });
+
     it('ignores DependsOn', () => {
       expect(place(`${res('Logs', 'AWS::S3::Bucket')}\n    DependsOn: PrivateSubnetA`).has('Logs')).toBe(false);
     });
