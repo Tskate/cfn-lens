@@ -17,7 +17,7 @@ import { useDebouncedValue } from '@/features/editor/useDebouncedValue';
 import { samples } from '@/features/samples/samples';
 import { readTemplateHandoff } from '@/features/template-input/templateHandoff';
 import { WorkspaceHeader } from './WorkspaceHeader';
-import { WorkspaceLayout } from './WorkspaceLayout';
+import { WorkspaceLayout, type WorkspacePanel } from './WorkspaceLayout';
 
 // The selected resource, and the lines the editor highlights: the resource itself unless a
 // line link in the panel pointed somewhere else (e.g. a resource folded into it).
@@ -40,6 +40,7 @@ export function WorkspacePage() {
 }
 
 function Workspace({ documentName, initialSource }: { documentName: string; initialSource: string | undefined }) {
+  const [activePanel, setActivePanel] = useState<WorkspacePanel>('diagram');
   const [source, setSource] = useState(initialSource);
   const [showAllResources, setShowAllResources] = useState(false);
   const [selection, setSelection] = useState<Selection>();
@@ -53,12 +54,17 @@ function Workspace({ documentName, initialSource }: { documentName: string; init
   const highlight = highlightOf(selectedNode, selection);
 
   const select = (id: string | undefined) => setSelection(toSelection(id));
-  const showRange = (range: SourceRange) => setSelection((current) => withRange(current, range));
+  const showRange = (range: SourceRange) => {
+    setSelection((current) => withRange(current, range));
+    setActivePanel('editor');
+  };
 
   return (
     <>
       <title>{`${documentName} · cfn-lens`}</title>
       <WorkspaceLayout
+        activePanel={activePanel}
+        onPanelChange={setActivePanel}
         header={
           <WorkspaceHeader
             documentName={documentName}

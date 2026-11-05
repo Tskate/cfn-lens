@@ -6,6 +6,7 @@ export type Containment = {
   groups: DiagramGroup[];
   // Resource logical ID → the group it sits in; resources outside every VPC are absent
   parentOf: ReadonlyMap<string, string>;
+  placementAlternatives: ReadonlyMap<string, readonly string[]>;
 };
 
 type Zone = { id: string; name: string; parentId?: string };
@@ -23,10 +24,10 @@ const ROUTE_TABLE_ASSOCIATION = 'AWS::EC2::SubnetRouteTableAssociation';
 export function findContainment(template: Template): Containment {
   const resources = [...template.resources.values()];
   const typeOf = (id: string) => template.resources.get(id)?.type;
-  const references = new Map(resources.map((resource) => [resource.name, referencedIds(resource)]));
+  const references = new Map(resources.map((resource) => [resource.name, placementReferences(resource)]));
   const referencesOfType = (id: string, type: string) => (references.get(id) ?? []).filter((target) => typeOf(target) === type);
 
-  const publicSubnets = findPublicSubnets(resources, typeOf);
+  const subnetAccess = classifySubnets(resources, typeOf);
   const zones = new Map<string, Zone>();
 
   const subnets = resources.filter(isType(SUBNET)).map((subnet): DiagramGroup & { kind: 'subnet' } => {
@@ -37,7 +38,7 @@ export function findContainment(template: Template): Containment {
       zones.set(zone.id, zone);
     }
 
-    const access: SubnetAccess = publicSubnets.has(subnet.name) ? 'public' : 'private';
+    const access: SubnetAccess = subnetAccess.get(subnet.name) ?? 'unknown';
     return { kind: 'subnet', id: subnet.name, access, cidr: readCidr(subnet), parentId: zone?.id ?? vpcId, range: subnet.range };
   });
 
@@ -75,12 +76,25 @@ export function findContainment(template: Template): Containment {
   };
 
   const parentOf = new Map<string, string>();
+  const placementAlternatives = new Map<string, readonly string[]>();
 
   for (const resource of resources) {
     if (groupParents.has(resource.name)) {
       continue;
     }
 
+    const conditional = placementValues(resource)
+      .flatMap(findReferences)
+      .filter((ref) => ref.conditions?.length);
+    if (conditional.length > 0) {
+      placementAlternatives.set(
+        resource.name,
+        conditional.map(
+          (ref) => `${ref.target} if ${ref.conditions!.map((condition) => `${condition.name}=${condition.value}`).join(' and ')}`,
+        ),
+      );
+      continue;
+    }
     const targets = references.get(resource.name) ?? [];
     const subnetIds = targets.flatMap(subnetsReachedFrom);
     const parentId = lowestCommonGroup(subnetIds.map(ancestorsOf)) ?? referencesOfType(resource.name, VPC)[0];
@@ -90,37 +104,57 @@ export function findContainment(template: Template): Containment {
     }
   }
 
-  return { groups, parentOf };
+  return { groups, parentOf, placementAlternatives };
 }
 
-// Public = associated with a route table that has a route to an internet gateway in this template.
-// Subnets without an association use the VPC's main route table, which a template can't add routes to.
-function findPublicSubnets(resources: readonly Resource[], typeOf: (id: string) => string | undefined): Set<string> {
-  const internetRouteTables = new Set<string>();
-
-  for (const route of resources.filter(isType(ROUTE))) {
-    const gateway = propertyTarget(route, 'GatewayId');
-    const routeTable = propertyTarget(route, 'RouteTableId');
-    const isInternetRoute = gateway !== undefined && typeOf(gateway) === INTERNET_GATEWAY;
-
-    if (isInternetRoute && routeTable !== undefined) {
-      internetRouteTables.add(routeTable);
+// Classify only explicit, unconditional associations and locally known route tables.
+// Missing associations may use an existing main table, so absence is not evidence of privacy.
+function classifySubnets(resources: readonly Resource[], typeOf: (id: string) => string | undefined): Map<string, SubnetAccess> {
+  const result = new Map<string, SubnetAccess>();
+  const routes = resources.filter(isType(ROUTE));
+  for (const subnet of resources.filter(isType(SUBNET))) {
+    const associations = resources.filter(isType(ROUTE_TABLE_ASSOCIATION)).filter((association) => {
+      const value = entryOf(association.properties, 'SubnetId');
+      return value && findReferences(value).some(({ target }) => target === subnet.name);
+    });
+    const [association] = associations;
+    if (
+      associations.length !== 1 ||
+      !association ||
+      subnet.condition ||
+      association.condition ||
+      propertyTarget(association, 'SubnetId') !== subnet.name
+    )
+      continue;
+    const tableId = propertyTarget(association, 'RouteTableId');
+    const table = resources.find(({ name }) => name === tableId);
+    if (!table || table.type !== 'AWS::EC2::RouteTable' || table.condition) continue;
+    let access: SubnetAccess = 'private';
+    for (const route of routes) {
+      const tableValue = entryOf(route.properties, 'RouteTableId');
+      // An unresolved route table may refer to this table at deployment time.
+      const target = propertyTarget(route, 'RouteTableId');
+      if (!target || (tableValue && findReferences(tableValue).some((ref) => ref.conditions?.length))) {
+        access = 'unknown';
+        break;
+      }
+      if (target !== tableId) continue;
+      const gatewayValue = entryOf(route.properties, 'GatewayId');
+      if (!gatewayValue) continue; // NAT, peering and transit routes do not make a subnet public.
+      const gateway = propertyTarget(route, 'GatewayId');
+      if (!gateway || route.condition || resources.find(({ name }) => name === gateway)?.condition) {
+        access = 'unknown';
+        break;
+      }
+      if (typeOf(gateway) === INTERNET_GATEWAY) access = 'public';
+      else if (typeOf(gateway) !== 'AWS::EC2::VPNGateway') {
+        access = 'unknown';
+        break;
+      }
     }
+    result.set(subnet.name, access);
   }
-
-  const publicSubnets = new Set<string>();
-
-  for (const association of resources.filter(isType(ROUTE_TABLE_ASSOCIATION))) {
-    const routeTable = propertyTarget(association, 'RouteTableId');
-    const subnet = propertyTarget(association, 'SubnetId');
-    const isPublic = routeTable !== undefined && internetRouteTables.has(routeTable);
-
-    if (isPublic && subnet !== undefined) {
-      publicSubnets.add(subnet);
-    }
-  }
-
-  return publicSubnets;
+  return result;
 }
 
 // A literal zone name, or !Select [N, !GetAZs …] → "AZ N+1". Anything else can't be resolved (D29).
@@ -153,12 +187,47 @@ function lowestCommonGroup(chains: readonly string[][]): string | undefined {
   return first.find((group) => chains.every((chain) => chain.includes(group)));
 }
 
-function referencedIds(resource: Resource): string[] {
-  if (!resource.properties) {
-    return [];
-  }
+// Only documented network configuration establishes placement. Arbitrary references
+// in policies, environment variables, or user data do not locate a resource.
+const PLACEMENT_PATHS: Readonly<Record<string, readonly string[]>> = {
+  'AWS::EC2::Subnet': ['VpcId'],
+  'AWS::EC2::Instance': ['SubnetId', 'NetworkInterfaces'],
+  'AWS::EC2::NetworkInterface': ['SubnetId'],
+  'AWS::EC2::NatGateway': ['SubnetId'],
+  'AWS::EC2::SecurityGroup': ['VpcId'],
+  'AWS::EC2::RouteTable': ['VpcId'],
+  'AWS::EC2::VPCEndpoint': ['VpcId', 'SubnetIds'],
+  'AWS::EC2::SubnetRouteTableAssociation': ['SubnetId'],
+  'AWS::EC2::SubnetNetworkAclAssociation': ['SubnetId'],
+  'AWS::EC2::NetworkAcl': ['VpcId'],
+  'AWS::ElasticLoadBalancingV2::LoadBalancer': ['Subnets', 'SubnetMappings'],
+  'AWS::ElasticLoadBalancing::LoadBalancer': ['Subnets'],
+  'AWS::AutoScaling::AutoScalingGroup': ['VPCZoneIdentifier'],
+  'AWS::Lambda::Function': ['VpcConfig.SubnetIds'],
+  'AWS::ECS::Service': ['NetworkConfiguration.AwsvpcConfiguration.Subnets'],
+  'AWS::RDS::DBSubnetGroup': ['SubnetIds'],
+  'AWS::RDS::DBInstance': ['DBSubnetGroupName'],
+  'AWS::RDS::DBCluster': ['DBSubnetGroupName'],
+  'AWS::ElastiCache::SubnetGroup': ['SubnetIds'],
+  'AWS::ElastiCache::CacheCluster': ['CacheSubnetGroupName'],
+  'AWS::ElastiCache::ReplicationGroup': ['CacheSubnetGroupName'],
+  'AWS::Redshift::ClusterSubnetGroup': ['SubnetIds'],
+  'AWS::Redshift::Cluster': ['ClusterSubnetGroupName'],
+  'AWS::EFS::MountTarget': ['SubnetId'],
+};
 
-  return findReferences(resource.properties).map(({ target }) => target);
+export function placementValues(resource: Resource): TemplateValue[] {
+  return (PLACEMENT_PATHS[resource.type] ?? []).flatMap((path) => {
+    let value = resource.properties;
+    for (const key of path.split('.')) value = entryOf(value, key);
+    return value ? [value] : [];
+  });
+}
+
+function placementReferences(resource: Resource): string[] {
+  return placementValues(resource)
+    .flatMap(findReferences)
+    .map(({ target }) => target);
 }
 
 function propertyTarget(resource: Resource, key: string): string | undefined {
@@ -168,7 +237,9 @@ function propertyTarget(resource: Resource, key: string): string | undefined {
     return;
   }
 
-  return findReferences(value)[0]?.target;
+  return value.kind === 'intrinsic' && value.fn === 'Ref' && value.arg.kind === 'scalar' && typeof value.arg.value === 'string'
+    ? value.arg.value
+    : undefined;
 }
 
 function readCidr(resource: Resource): string | undefined {

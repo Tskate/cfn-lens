@@ -17,7 +17,7 @@ const selectedBox = 'border-2 border-blue-600 bg-background px-[11px] shadow-[0_
 
 export function ResourceNode({ id, data, selected }: NodeProps<ResourceFlowNode>) {
   const { resourceType, typeName, icon, condition, folded } = data;
-  const variant = condition === undefined ? variants.regular : variants.conditional;
+  const variant = condition === undefined && !data.placementAlternatives?.length ? variants.regular : variants.conditional;
   const box = selected ? selectedBox : variant.box;
 
   return (
@@ -30,6 +30,11 @@ export function ResourceNode({ id, data, selected }: NodeProps<ResourceFlowNode>
           <span className="block truncate text-xs text-neutral-600">{typeName}</span>
         </span>
       </div>
+      {data.placementAlternatives?.length && (
+        <span title={data.placementAlternatives.join('; ')} className="absolute bottom-0 left-0 text-[10px] text-neutral-600">
+          Placement varies by condition
+        </span>
+      )}
       {folded.length > 0 && <FoldBadge folded={folded} />}
       {condition !== undefined && (
         <span className="absolute top-16.5 left-0 rounded-md border border-[#e0e0e0] bg-background px-1.5 py-px font-mono text-[11px]/4 whitespace-nowrap text-neutral-600">

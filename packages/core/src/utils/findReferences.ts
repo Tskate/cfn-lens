@@ -4,6 +4,7 @@ import type { ReferenceFunction, SourceRange, TemplateValue } from '../types';
 export type ValueReference = {
   target: string;
   attribute?: string;
+  conditions?: readonly { name: string; value: boolean }[];
   via: ReferenceFunction;
   range: SourceRange;
 };
@@ -19,6 +20,27 @@ export function findReferences(value: TemplateValue): ValueReference[] {
 }
 
 function collect(value: TemplateValue, references: ValueReference[]): void {
+  if (value.kind === 'intrinsic' && value.fn === 'Fn::If' && value.arg.kind === 'list') {
+    const [condition, yes, no] = value.arg.items;
+    const name = nameOf(condition);
+    if (name !== undefined) {
+      for (const [branch, expected] of [
+        [yes, true],
+        [no, false],
+      ] as const) {
+        if (!branch) continue;
+        const found: ValueReference[] = [];
+        collect(branch, found);
+        for (const reference of found) {
+          const conditions = [{ name, value: expected }, ...(reference.conditions ?? [])];
+          if (!conditions.some((item) => conditions.some((other) => other.name === item.name && other.value !== item.value))) {
+            references.push({ ...reference, conditions });
+          }
+        }
+      }
+      return;
+    }
+  }
   if (value.kind === 'list') {
     value.items.forEach((item) => collect(item, references));
     return;

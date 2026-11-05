@@ -40,6 +40,7 @@ export type DiagnosticCode =
   | 'invalid-resource-type'
   | 'invalid-policy'
   | 'unknown-resource'
+  | 'unknown-resource-reference'
   | 'circular-dependency';
 
 export type Diagnostic = {
