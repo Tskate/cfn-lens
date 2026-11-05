@@ -1,8 +1,12 @@
-import { useState, useSyncExternalStore, type ReactNode } from 'react';
+import { useSyncExternalStore, type ReactNode } from 'react';
 import { ResizablePanel, ResizablePanelGroup } from '@/components/primitives/resizable';
 import { WorkspaceSplitter } from './WorkspaceSplitter';
 
+export type WorkspacePanel = 'diagram' | 'editor' | 'details';
+
 interface WorkspaceLayoutProps {
+  activePanel: WorkspacePanel;
+  onPanelChange: (panel: WorkspacePanel) => void;
   header: ReactNode;
   editor: ReactNode;
   diagram: ReactNode;
@@ -20,9 +24,8 @@ const subscribeToWidth = (notify: () => void) => {
 };
 const isWide = () => window.matchMedia('(min-width: 1100px)').matches;
 
-export function WorkspaceLayout({ header, editor, diagram, details }: WorkspaceLayoutProps) {
+export function WorkspaceLayout({ header, editor, diagram, details, activePanel: active, onPanelChange: setActive }: WorkspaceLayoutProps) {
   const wide = useSyncExternalStore(subscribeToWidth, isWide, () => true);
-  const [active, setActive] = useState<'diagram' | 'editor' | 'details'>('diagram');
   const panels = { diagram, editor, details };
   return (
     <div className="flex h-dvh flex-col bg-neutral-50 text-sm/[1.45]">
