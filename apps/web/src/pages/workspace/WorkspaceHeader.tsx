@@ -26,11 +26,15 @@ export function WorkspaceHeader({ documentName, foldedCount, showAllResources, o
 
       <span className="hidden flex-1 sm:block" />
 
-      <label className="flex cursor-pointer items-center gap-2.5">
+      {/* Its own row on narrow screens, so "New template" can't move up beside it when the chip goes */}
+      <label className="flex cursor-pointer items-center gap-2.5 max-sm:basis-full">
         <Switch checked={showAllResources} onCheckedChange={onShowAllResourcesChange} />
         Show all resources
         {foldedCount > 0 && (
-          <span className="rounded-full bg-neutral-100 px-2 py-0.5 text-xs text-neutral-600 tabular-nums">{foldedCount} folded</span>
+          // First on wide screens, where the row is right-aligned: the chip coming and going must not move the switch
+          <span className="rounded-full bg-neutral-100 px-2 py-0.5 text-xs text-neutral-600 tabular-nums sm:order-first">
+            {foldedCount} folded
+          </span>
         )}
       </label>
       <Link to="/" className={buttonVariants({ variant: 'outline', className: 'h-8.5 gap-1.5 px-3' })}>
