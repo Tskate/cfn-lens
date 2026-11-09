@@ -5,7 +5,7 @@ import { lintGutter, setDiagnostics, type Diagnostic as EditorDiagnostic } from 
 import { RangeSetBuilder, StateEffect, StateField, type Text } from '@codemirror/state';
 import { Decoration, EditorView, type DecorationSet } from '@codemirror/view';
 import CodeMirror from '@uiw/react-codemirror';
-import { useEffect, useState } from 'react';
+import { useEffect, useEffectEvent, useState } from 'react';
 import { optionalLineSpan, spanFrom, type LineSpan } from '@/features/source/lineSpan';
 
 interface TemplateEditorProps {
@@ -13,8 +13,13 @@ interface TemplateEditorProps {
   format: Format | undefined;
   diagnostics: readonly Diagnostic[];
   highlight: SourceRange | undefined;
+  // A new value scrolls to the highlight; lines shifting under it while typing don't
+  revealKey: object | undefined;
   onChange: (source: string) => void;
 }
+
+// Two lines of context above the revealed resource
+const REVEAL_MARGIN_PX = 40;
 
 // ── Highlighted lines: the selected resource, drawn like the read-only view ─────────────────────
 
@@ -55,7 +60,7 @@ const languages = { yaml: [...sharedExtensions, yaml()], json: [...sharedExtensi
 const setupOptions = { foldGutter: false, autocompletion: false, highlightActiveLine: false };
 
 /** The editable template. Diagnostics and the highlight are pushed into CodeMirror as transactions. */
-export function TemplateEditor({ source, format, diagnostics, highlight, onChange }: TemplateEditorProps) {
+export function TemplateEditor({ source, format, diagnostics, highlight, revealKey, onChange }: TemplateEditorProps) {
   // CodeMirror owns its DOM and state; React talks to it through the view, once it exists
   const [view, setView] = useState<EditorView>();
   const highlighted = optionalLineSpan(highlight);
@@ -75,9 +80,21 @@ export function TemplateEditor({ source, format, diagnostics, highlight, onChang
       return;
     }
 
-    const span = spanFrom(firstLine, lastLine);
-    view.dispatch({ effects: [setHighlight.of(span), ...scrollTo(view.state.doc, span)] });
+    view.dispatch({ effects: setHighlight.of(spanFrom(firstLine, lastLine)) });
   }, [view, firstLine, lastLine]);
+
+  // An effect event reads the latest lines without making a change to them a reason to scroll
+  const revealHighlight = useEffectEvent((editor: EditorView) => {
+    editor.dispatch({ effects: scrollTo(editor.state.doc, spanFrom(firstLine, lastLine)) });
+  });
+
+  useEffect(() => {
+    if (!view) {
+      return;
+    }
+
+    revealHighlight(view);
+  }, [view, revealKey]);
 
   return (
     <CodeMirror
@@ -123,7 +140,7 @@ function scrollTo(doc: Text, span: LineSpan | undefined) {
     return [];
   }
 
-  return [EditorView.scrollIntoView(doc.line(span.first).from, { y: 'nearest' })];
+  return [EditorView.scrollIntoView(doc.line(span.first).from, { y: 'start', yMargin: REVEAL_MARGIN_PX })];
 }
 
 // Offsets come from the last parse; text typed since may be shorter, so they're clamped.
