@@ -40,7 +40,12 @@ export function RoutedEdge({ data, markerEnd }: EdgeProps<RoutedFlowEdge>) {
       onBlur={() => setHovered(false)}
     >
       <title>{`References target: ${label}. Arrows do not represent traffic flow.`}</title>
-      <BaseEdge path={toPath(start, rest)} markerEnd={markerEnd} style={{ ...style, strokeDasharray: orderOnly ? '6 4' : undefined }} />
+      <BaseEdge
+        path={toPath(start, rest)}
+        markerEnd={markerEnd}
+        className="transition-[stroke] duration-150 ease-out motion-reduce:transition-none"
+        style={{ ...style, strokeDasharray: orderOnly ? '6 4' : undefined }}
+      />
       <path
         d={toPath(start, rest)}
         fill="none"

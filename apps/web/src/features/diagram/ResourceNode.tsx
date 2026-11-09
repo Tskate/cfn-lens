@@ -23,7 +23,13 @@ export function ResourceNode({ id, data, selected }: NodeProps<ResourceFlowNode>
   return (
     <div className="relative" style={{ paddingBottom: variant.tagSpace }}>
       <Handle type="target" position={Position.Top} isConnectable={false} className={handleClass} />
-      <div title={resourceType} className={cn('flex h-14 w-39 items-center gap-2.5 rounded-[10px] px-3 text-[13px]/4', box)}>
+      <div
+        title={resourceType}
+        className={cn(
+          'flex h-14 w-39 items-center gap-2.5 rounded-[10px] px-3 text-[13px]/4 transition-[border-color,background-color,box-shadow] duration-150 ease-out motion-reduce:transition-none',
+          box,
+        )}
+      >
         <ServiceIcon name={icon} className="rounded-lg" />
         <span className="min-w-0">
           <b className="block truncate font-semibold">{id}</b>
