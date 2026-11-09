@@ -7,7 +7,7 @@ import {
   type ParseResult,
   type SourceRange,
 } from '@cfn-lens/core';
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import { useLocation, useSearchParams } from 'react-router';
 import { DetailsArea } from '@/features/details/DetailsArea';
 import { DiagramArea } from '@/features/diagram/DiagramArea';
@@ -47,8 +47,9 @@ function Workspace({ documentName, initialSource }: { documentName: string; init
 
   // Parsing and the diagram follow the text once typing pauses; the editor itself stays instant.
   const parsedSource = useDebouncedValue(source, PARSE_DELAY_MS);
-  const parseResult = parsedSource === undefined ? undefined : parseTemplate(parsedSource);
-  const diagram = toDiagram(parseResult, showAllResources);
+  // Explicit memos: without them the compiler groups these with `selection`, so every click rebuilds the diagram.
+  const parseResult = useMemo(() => (parsedSource === undefined ? undefined : parseTemplate(parsedSource)), [parsedSource]);
+  const diagram = useMemo(() => toDiagram(parseResult, showAllResources), [parseResult, showAllResources]);
   // A resource can disappear from the diagram, e.g. folded again when "Show all resources" turns off
   const selectedNode = diagram?.nodes.find((node) => node.id === selection?.id);
   const highlight = highlightOf(selectedNode, selection);
