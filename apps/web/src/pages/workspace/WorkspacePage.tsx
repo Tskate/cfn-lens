@@ -80,6 +80,7 @@ function Workspace({ documentName, initialSource }: { documentName: string; init
             format={parseResult?.format}
             diagnostics={parseResult?.diagnostics ?? []}
             highlight={highlight}
+            revealKey={selection}
             onChange={setSource}
           />
         }

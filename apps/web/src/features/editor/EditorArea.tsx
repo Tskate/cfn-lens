@@ -11,6 +11,8 @@ interface EditorAreaProps {
   diagnostics: readonly Diagnostic[];
   // The selected resource's lines (or a line link's), drawn in blue
   highlight: SourceRange | undefined;
+  // A new value scrolls the editor to the highlight
+  revealKey: object | undefined;
   onChange: (source: string) => void;
 }
 
@@ -40,7 +42,7 @@ const severityClasses: Record<DiagnosticSeverity, { summary: string; line: strin
   },
 };
 
-export function EditorArea({ source, format, diagnostics, highlight, onChange }: EditorAreaProps) {
+export function EditorArea({ source, format, diagnostics, highlight, revealKey, onChange }: EditorAreaProps) {
   const headingId = useId();
   const severity = worstSeverity(diagnostics);
   const classes = severity && severityClasses[severity];
@@ -59,7 +61,14 @@ export function EditorArea({ source, format, diagnostics, highlight, onChange }:
       {source !== undefined ? (
         <>
           <Suspense fallback={<TemplateSource template={source} lineSeverities={severityByLine(diagnostics)} highlight={highlight} />}>
-            <TemplateEditor source={source} format={format} diagnostics={diagnostics} highlight={highlight} onChange={onChange} />
+            <TemplateEditor
+              source={source}
+              format={format}
+              diagnostics={diagnostics}
+              highlight={highlight}
+              revealKey={revealKey}
+              onChange={onChange}
+            />
           </Suspense>
           <ProblemList diagnostics={diagnostics} />
         </>
@@ -91,7 +100,7 @@ function TemplateSource({
       return;
     }
 
-    sourceRef.current?.querySelector(`[data-line="${firstHighlightedLine}"]`)?.scrollIntoView({ block: 'nearest' });
+    sourceRef.current?.querySelector(`[data-line="${firstHighlightedLine}"]`)?.scrollIntoView({ block: 'start' });
   }, [firstHighlightedLine]);
 
   const classesFor = (lineNumber: number): LineClasses | undefined => {
