@@ -67,18 +67,35 @@ const containerOptions: Record<DiagramGroup['kind'], LayoutOptions> = {
 const EDGE_Z_INDEX = 1000;
 
 // use() needs the same promise on every render, and a promise made during render is new each time.
-const layouts = new WeakMap<DiagramModel, Promise<DiagramLayout>>();
+// Keyed by content, so an edit that changes nothing drawn (a comment, shifted lines) keeps its layout and canvas.
+const layouts = new Map<string, Promise<DiagramLayout>>();
+
+// More than one: while a new layout loads, the previous diagram is still rendering and needs its promise.
+const MAX_CACHED_LAYOUTS = 8;
+
+const undrawnFields = new Set(['range', 'description', 'absorbed']);
 
 export function loadLayout(model: DiagramModel): Promise<DiagramLayout> {
-  const cached = layouts.get(model);
+  const key = JSON.stringify(model, (field, value: unknown) => (undrawnFields.has(field) ? undefined : value));
+  const layout = layouts.get(key) ?? layoutDiagram(model);
 
-  if (cached) {
-    return cached;
+  // A Map keeps insertion order, so re-adding makes this the newest and the first key the oldest.
+  layouts.delete(key);
+  layouts.set(key, layout);
+
+  if (layouts.size > MAX_CACHED_LAYOUTS) {
+    evictOldestLayout();
   }
 
-  const layout = layoutDiagram(model);
-  layouts.set(model, layout);
   return layout;
+}
+
+function evictOldestLayout() {
+  const [oldest] = layouts.keys();
+
+  if (oldest !== undefined) {
+    layouts.delete(oldest);
+  }
 }
 
 async function layoutDiagram(model: DiagramModel): Promise<DiagramLayout> {

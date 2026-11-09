@@ -1,5 +1,6 @@
 import type { DiagramEdge, DiagramNode, FoldedResource, PropertySummary, ReferenceKind, SourceRange, ValueSummary } from '@cfn-lens/core';
 import { ArrowUpRight, Code, MousePointerClick, X } from 'lucide-react';
+import { cn } from 'cn';
 import { useId, type ReactNode } from 'react';
 import { ServiceIcon } from '@/components/ServiceIcon';
 import { formatLineSpan, lineSpan } from '@/features/source/lineSpan';
@@ -18,6 +19,8 @@ const sectionTitleClass = 'text-xs font-semibold tracking-[0.04em] text-neutral-
 const chipClass = 'inline-flex h-7.5 items-center gap-1.5 rounded-md border px-2.5 text-[13px] hover:bg-neutral-50 [&_svg]:size-3.5';
 const linkClass = 'font-medium text-blue-700 underline-offset-2 hover:underline';
 
+const enterClass = 'animate-in fade-in slide-in-from-right-1 duration-200 ease-out motion-reduce:animate-none';
+
 const referenceLabels: Record<ReferenceKind, string> = { Ref: 'Ref', 'Fn::GetAtt': 'GetAtt', 'Fn::Sub': 'Sub', DependsOn: 'DependsOn' };
 
 export function DetailsArea({ node, ...props }: DetailsAreaProps) {
@@ -25,14 +28,15 @@ export function DetailsArea({ node, ...props }: DetailsAreaProps) {
     return <NoSelection />;
   }
 
-  return <ResourceDetails node={node} {...props} />;
+  // Another resource is a new panel: the key replays the entrance and starts it scrolled to the top.
+  return <ResourceDetails key={node.id} node={node} {...props} />;
 }
 
 function NoSelection() {
   return (
     <aside
       aria-label="Resource details"
-      className="flex h-full flex-col items-center justify-center gap-3 overflow-auto bg-background p-8 text-center"
+      className={cn('flex h-full flex-col items-center justify-center gap-3 overflow-auto bg-background p-8 text-center', enterClass)}
     >
       <span className="flex size-10 items-center justify-center rounded-[10px] bg-neutral-100 text-neutral-600">
         <MousePointerClick className="size-5" aria-hidden="true" />
@@ -54,7 +58,7 @@ function ResourceDetails({ node, edges, properties, selectableIds, onSelect, onS
   );
 
   return (
-    <aside aria-labelledby={headingId} className="flex h-full flex-col overflow-auto bg-background">
+    <aside aria-labelledby={headingId} className={cn('flex h-full flex-col overflow-auto bg-background', enterClass)}>
       <div className="flex flex-col gap-3 border-b px-5 pt-5 pb-4">
         <div className="flex items-start gap-3">
           <ServiceIcon name={node.icon} className="size-10 rounded-[10px]" />
