@@ -65,15 +65,18 @@ function EdgeTooltip({ midpoint, label }: { midpoint: XYPosition; label: string 
 
   return (
     <EdgeLabelRenderer>
+      {/* Two elements: the entrance animation also sets transform, which would override the position */}
       <div
-        className="pointer-events-none absolute rounded-md border border-neutral-300 bg-white px-2 py-1 text-xs font-medium text-neutral-950 shadow-md"
+        className="pointer-events-none absolute z-3000"
         style={{
           transform: `translate(-50%, -100%) translate(${midpoint.x}px, ${midpoint.y - 12 / zoom}px) scale(${1 / zoom})`,
           transformOrigin: 'bottom center',
           maxWidth: 280,
         }}
       >
-        {label}
+        <div className="animate-in rounded-md border border-neutral-300 bg-white px-2 py-1 text-xs font-medium text-neutral-950 shadow-md duration-150 ease-out fade-in motion-reduce:animate-none">
+          {label}
+        </div>
       </div>
     </EdgeLabelRenderer>
   );
